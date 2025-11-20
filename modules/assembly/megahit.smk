@@ -4,20 +4,41 @@ rule megahit:
         r2 = "reads/{qc_filter}/{sample}_R2.fastq.gz"
     output:
         contigs = "assembly/megahit/{qc_filter}/{sample}/contigs.fa"
+    benchmark: 
+        "assembly/megahit/{qc_filter}/{sample}/benchmark.txt"
     params:
-        outdir = "assembly/megahit/{qc_filter}/{sample}"
+        basedir = "assembly/megahit/{qc_filter}/{sample}",
+        tmpdir = "assembly/megahit/{qc_filter}/{sample}/tmp_megahit"
     threads: 32
+    log:
+        "assembly/megahit/{qc_filter}/{sample}/megahit.log"
     conda:
         "../../envs/assembly.yaml"
     shell:
         """
-        rm -rf {params.outdir}
-        megahit -1 {input.r1} -2 {input.r2} \
-            -o {params.outdir} \
-            -t {threads} 
+        # Create base directory and log
+        mkdir -p {params.basedir}
+        echo "Assembling {wildcards.sample}" > {log}
         
-        # MEGAHIT outputs final.contigs.fa, rename to contigs.fa
-        mv {params.outdir}/final.contigs.fa {output.contigs}
+        # Clean up any old temp directory
+        rm -rf {params.tmpdir}
+        
+        # Run MEGAHIT in temp directory
+        megahit \
+            -1 {input.r1} \
+            -2 {input.r2} \
+            -o {params.tmpdir} \
+            -t {threads} \
+            2>> {log}
+        
+        # Move all MEGAHIT output up one level
+        mv {params.tmpdir}/* {params.basedir}/
+        
+        # Rename final.contigs.fa to contigs.fa
+        mv {params.basedir}/final.contigs.fa {output.contigs}
+        
+        # Clean up empty temp directory
+        rm -rf {params.tmpdir}
         """
 
 rule megahit_coassembly:
