@@ -1,0 +1,7 @@
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - virsorter=2.2.4
+  - py-xgboost-cpu

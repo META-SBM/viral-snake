@@ -1,3 +1,23 @@
+# Snakemake
+.snakemake/
+*.snakemake.log
+.snakemake.log
+
+# Snakemake benchmarks and logs
+benchmarks/
+logs/
+
+# Snakemake results (adjust based on your output directory names)
+results/
+output/
+
+# Conda/Mamba environments created by Snakemake
+.snakemake/conda/
+.snakemake/singularity/
+
+# Slurm logs (if using cluster execution)
+slurm-*.out
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

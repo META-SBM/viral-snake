@@ -1,0 +1,5 @@
+name: virsorter_env
+channels:
+dependencies:
+
+prefix: "/home/fedorov_de/.local/share/mamba/envs/virsorter_env"
