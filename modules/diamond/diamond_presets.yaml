@@ -1,0 +1,33 @@
+# DIAMOND BLASTX presets
+presets:
+  faster:
+    sensitivity_flag: "--faster"
+    block_size: 20.0
+    index_chunks: 1
+    max_target_seqs: 10
+    evalue: "1e-5"
+    description: "Fast mode for quick screening"
+  
+  sensitive:
+    sensitivity_flag: "--sensitive"
+    block_size: 15.0
+    index_chunks: 2
+    max_target_seqs: 25
+    evalue: "1e-10"
+    description: "Balanced sensitivity and speed"
+  
+  very_sensitive:
+    sensitivity_flag: "--very-sensitive"
+    block_size: 10.0
+    index_chunks: 4
+    max_target_seqs: 50
+    evalue: "1e-20"
+    description: "Maximum sensitivity for thorough annotation"
+  
+  ultra_sensitive:
+    sensitivity_flag: "--ultra-sensitive"
+    block_size: 8.0
+    index_chunks: 4
+    max_target_seqs: 100
+    evalue: "1e-25"
+    description: "Exhaustive search for distant homologs"

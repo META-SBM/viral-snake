@@ -12,6 +12,25 @@ configfile: "config/config.yaml"
 
 # Extract database paths
 DATABASES = config['databases']
+THREADS = config['threads']
+
+# Default thread allocation
+DEFAULT_THREADS = {
+    'megahit': 32,
+    'diamond': 32,
+    'kraken2_contigs': 32,
+    'kraken2': 16,
+    'mmseqs2': 16,
+    'blast': 6,
+    'minimap2': 6,
+    'cutadapt': 8,
+    'quast': 8,
+    'fastqc': 4,
+    'seqkit': 4,
+}
+
+# Merge user config with defaults (user config overrides)
+THREADS = {**DEFAULT_THREADS, **config.get('threads', {})}
 
 # Set working directory
 WORKDIR = config.get("workdir")

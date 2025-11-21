@@ -10,7 +10,7 @@ rule kraken2_classify:
         confidence = 0.4
     log:
         "kraken2/{qc_filter}/{sample}.kraken2.log"
-    threads: 16
+    threads: THREADS['kraken2']
     conda:
         "../../envs/kraken2.yaml"
     shell:
@@ -29,10 +29,10 @@ rule kraken2_classify:
 
 rule bracken_abundance:
     input:
-        report = "kraken2/{qc_filter}/{sample}.kraken2.report"
+        report  = "kraken2/{qc_filter}/{sample}.kraken2.report"
     output:
         bracken = "kraken2/{qc_filter}/{sample}.bracken",
-        report = "kraken2/{qc_filter}/{sample}.bracken.report"
+        report  = "kraken2/{qc_filter}/{sample}.bracken.report"
     params:
         db = DATABASES['kraken2'],
         read_len = 150,  # CHANGE THIS to match your actual read length

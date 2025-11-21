@@ -8,7 +8,7 @@ rule kraken2_classify_contigs:
         db = DATABASES['kraken2']
     log:
         "assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/kraken2/confidence_{confidence}/kraken2.log"
-    threads: 32
+    threads: THREADS['kraken2_contigs']
     conda:
         "../../envs/kraken2.yaml"
     shell:

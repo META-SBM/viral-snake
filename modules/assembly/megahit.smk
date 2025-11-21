@@ -9,7 +9,7 @@ rule megahit:
     params:
         basedir = "assembly/megahit/{qc_filter}/{sample}",
         tmpdir = "assembly/megahit/{qc_filter}/{sample}/tmp_megahit"
-    threads: 32
+    threads: THREADS['megahit']
     log:
         "assembly/megahit/{qc_filter}/{sample}/megahit.log"
     conda:

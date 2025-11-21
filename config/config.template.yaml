@@ -4,3 +4,19 @@ databases:
   diamond_nr: "/path/to/your/diamond/nr/database"
   kraken2: "/path/to/your/kraken2/database"
   taxdump: "/path/to/your/taxdump/directory"
+
+# Thread allocation
+threads:
+  megahit: 32         # megahit
+  diamond: 32         # diamond blastx
+  kraken2_contigs: 32 # kraken2 on assemblies
+  
+  kraken2_reads: 16   # kraken2 on reads
+  mmseqs2: 16         # clustering
+  blast: 6            # blastn
+  minimap2: 6         # alignment
+  
+  cutadapt: 8
+  quast: 8
+  fastqc: 4
+  seqkit: 4
