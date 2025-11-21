@@ -21,8 +21,6 @@ rule calculate_contig_lca:
             awk -F'\t' 'BEGIN {{OFS="\t"}} {{print $1, $12, $14}}' | \
             sort -t$'\t' -k1,1 -k2,2rn > {output.lca}.tmp.sorted
         
-        echo "Extracted $(wc -l < {output.lca}.tmp.sorted) hits" >> {log}
-        
         # Group by contig, take top N hits, collect taxids
         awk -F'\t' -v top_n={params.top_n} \
             'BEGIN {{OFS="\t"}}
@@ -61,10 +59,8 @@ rule calculate_contig_lca:
              }}' {output.lca}.tmp.sorted > {output.lca}.tmp.taxids
         
         echo "Grouped into $(wc -l < {output.lca}.tmp.taxids) contigs" >> {log}
-        head -5 {output.lca}.tmp.taxids >> {log}
         
         # Calculate LCA using taxonkit
-        # Output: contig_id<TAB>taxid_list<TAB>lca_taxid
         cat {output.lca}.tmp.taxids | \
             taxonkit lca \
                 --data-dir {params.taxdump} \
@@ -75,28 +71,34 @@ rule calculate_contig_lca:
                 2>> {log} > {output.lca}.tmp.lca
         
         echo "Calculated LCA for $(wc -l < {output.lca}.tmp.lca) contigs" >> {log}
-        head -5 {output.lca}.tmp.lca >> {log}
         
         # Extract just contig_id and lca_taxid
         cut -f1,3 {output.lca}.tmp.lca > {output.lca}.tmp.contig_taxid
         
-        # Get full taxonomy info for each LCA taxid
-        # Output: taxid<TAB>taxname<TAB>lineage<TAB>formatted_lineage
-        cut -f3 {output.lca}.tmp.lca | \
-            taxonkit lineage --data-dir {params.taxdump} --show-name 2>> {log} | \
+        # Get taxid -> name mapping
+        cut -f2 {output.lca}.tmp.contig_taxid | \
+            taxonkit lineage --data-dir {params.taxdump} 2>> {log} | \
+            awk -F'\t' '{{
+                # Extract just the last element from lineage (the actual name)
+                lineage = $2;
+                n = split(lineage, parts, ";");
+                name = parts[n];
+                print $1, name;
+            }}' > {output.lca}.tmp.names
+        
+        # Get formatted taxonomy
+        cut -f2 {output.lca}.tmp.contig_taxid | \
             taxonkit reformat2 \
                 --data-dir {params.taxdump} \
                 -I 1 \
                 -f "{{domain|acellular root|superkingdom}};{{phylum}};{{class}};{{order}};{{family}};{{genus}};{{species}}" \
-                -r "NA" 2>> {log} > {output.lca}.tmp.taxonomy
+                -r "NA" 2>> {log} | \
+            cut -f2 > {output.lca}.tmp.formatted
         
-        echo "Got taxonomy info" >> {log}
-        head -5 {output.lca}.tmp.taxonomy >> {log}
-        
-        # Combine contig info with taxonomy
-        # taxonomy file: taxid<TAB>taxname<TAB>lineage<TAB>formatted_lineage (fields 1,2,4)
-        # contig file: contig_id<TAB>lca_taxid
-        paste {output.lca}.tmp.contig_taxid <(cut -f2,4 {output.lca}.tmp.taxonomy) | \
+        # Combine: contig_id, lca_taxid, lca_name, taxonomy_ranks
+        paste {output.lca}.tmp.contig_taxid \
+              <(cut -f2 {output.lca}.tmp.names) \
+              {output.lca}.tmp.formatted | \
             awk 'BEGIN {{FS=OFS="\t"}}
                  {{
                    contig = $1;
@@ -114,7 +116,7 @@ rule calculate_contig_lca:
         echo -e "contig_id\tlca_taxid\tlca_name\tlca_domain\tlca_phylum\tlca_class\tlca_order\tlca_family\tlca_genus\tlca_species" | \
             cat - {output.lca_detailed}.tmp > {output.lca_detailed}
         
-        # Simple version (just header + contig and taxid)
+        # Simple version
         echo -e "contig_id\tlca_taxid" > {output.lca}
         cut -f1,2 {output.lca_detailed}.tmp >> {output.lca}
         
@@ -125,7 +127,6 @@ rule calculate_contig_lca:
         echo "" >> {log}
         echo "=== LCA calculation complete ===" >> {log}
         echo "Total contigs: $(tail -n +2 {output.lca_detailed} | wc -l)" >> {log}
-        echo "" >> {log}
         echo "Top 5 LCA domains:" >> {log}
         tail -n +2 {output.lca_detailed} | cut -f4 | sort | uniq -c | sort -rn | head -5 >> {log}
         """
