@@ -1,3 +1,22 @@
+import yaml
+from pathlib import Path
+
+# Load DIAMOND presets
+MODULE_DIR = Path(workflow.basedir) / "modules/diamond"
+with open(MODULE_DIR / "diamond_presets.yaml") as f:
+    DIAMOND_PRESETS = yaml.safe_load(f)['presets']
+
+def get_diamond_params(wildcards):
+    """Get all parameters for a DIAMOND preset"""
+    preset = DIAMOND_PRESETS[wildcards.preset]
+    return {
+        'sensitivity_flag': preset['sensitivity_flag'],
+        'block_size': preset['block_size'],
+        'index_chunks': preset['index_chunks'],
+        'max_target_seqs': preset['max_target_seqs'],
+        'evalue': preset['evalue']
+    }
+
 rule diamond_blastx_unified:
     """DIAMOND BLASTX for both individual assemblies and co-assemblies"""
     input:
@@ -5,9 +24,11 @@ rule diamond_blastx_unified:
     output:
         hits = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/hits.txt"
     params:
-        preset_flag = lambda wildcards: "--" + wildcards.preset.replace("_", "-"),
-        db = DATABASES['diamond_nr']
-    threads: 32
+        db = DATABASES['diamond_nr'],
+        diamond_params = get_diamond_params
+    threads: THREADS['diamond']
+    wildcard_constraints:
+        preset = "|".join(DIAMOND_PRESETS.keys())  # Validate preset names
     log:
         "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/diamond.log"
     benchmark:
@@ -20,7 +41,8 @@ rule diamond_blastx_unified:
         echo "Input contigs: {input.contigs}" | tee -a {log}
         echo "Database: {params.db}" | tee -a {log}
         echo "Output: {output.hits}" | tee -a {log}
-        echo "Preset: {params.preset_flag}" | tee -a {log}
+        echo "Preset: {wildcards.preset}" | tee -a {log}
+        echo "Sensitivity: {params.diamond_params[sensitivity_flag]}" | tee -a {log}
         echo "Threads: {threads}" | tee -a {log}
         echo "" | tee -a {log}
         
@@ -28,13 +50,13 @@ rule diamond_blastx_unified:
             -d {params.db} \
             -q {input.contigs} \
             -o {output.hits} \
-            {params.preset_flag} \
-            --block-size 20.0 \
-            --index-chunks 1 \
+            {params.diamond_params[sensitivity_flag]} \
+            --block-size {params.diamond_params[block_size]} \
+            --index-chunks {params.diamond_params[index_chunks]} \
             --threads {threads} \
             --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore stitle staxids \
-            --max-target-seqs 10 \
-            --evalue 1e-5 \
+            --max-target-seqs {params.diamond_params[max_target_seqs]} \
+            --evalue {params.diamond_params[evalue]} \
             2>> {log}
         
         echo "" | tee -a {log}
