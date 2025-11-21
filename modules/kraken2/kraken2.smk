@@ -1,6 +1,3 @@
-KRAKEN_DB = "/mnt/mgx/DATABASES/kraken2"
-
-
 rule kraken2_classify:
     input:
         r1 = "reads/{qc_filter}/{sample}_R1.fastq.gz",
@@ -9,13 +6,13 @@ rule kraken2_classify:
         report = "kraken2/{qc_filter}/{sample}.kraken2.report",
         output = "kraken2/{qc_filter}/{sample}.kraken2.output"
     params:
-        db = KRAKEN_DB,
+        db = DATABASES['kraken2'],
         confidence = 0.4
     log:
         "kraken2/{qc_filter}/{sample}.kraken2.log"
     threads: 16
     conda:
-        "kraken2"
+        "../../envs/kraken2.yaml"
     shell:
         """
         k2 classify --db {params.db} \
@@ -29,6 +26,7 @@ rule kraken2_classify:
             {input.r1} {input.r2}
         """
 
+
 rule bracken_abundance:
     input:
         report = "kraken2/{qc_filter}/{sample}.kraken2.report"
@@ -36,13 +34,13 @@ rule bracken_abundance:
         bracken = "kraken2/{qc_filter}/{sample}.bracken",
         report = "kraken2/{qc_filter}/{sample}.bracken.report"
     params:
-        db = KRAKEN_DB,
+        db = DATABASES['kraken2'],
         read_len = 150,  # CHANGE THIS to match your actual read length
         level = "S",     # S=Species, G=Genus, F=Family, etc.
         threshold = 10   # Minimum number of reads required
     threads: 1
     conda:
-        "kraken2"
+        "../../envs/kraken2.yaml"
     shell:
         """
         bracken -d {params.db} \
@@ -100,9 +98,9 @@ rule create_taxonomy_table:
     output:
         taxonomy = "feature_tables/bracken-{feature_table_id}/taxonomy_table.tsv"
     params:
-        taxdump = "/mnt/mgx/DATABASES/taxdump/01-Nov-2025"
+        taxdump = DATABASES['taxdump']
     conda:
-        "taxonkit"
+        "../../envs/taxonkit.yaml"
     shell:
         """
         # Extract tax IDs from first column (skip header, remove tax_id__ prefix)

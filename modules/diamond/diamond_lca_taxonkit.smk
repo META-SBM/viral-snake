@@ -6,12 +6,12 @@ rule calculate_contig_lca:
         lca = "{prefix}/contig_lca.tsv",
         lca_detailed = "{prefix}/contig_lca_detailed.tsv"
     params:
-        taxdump = "/mnt/mgx/DATABASES/taxdump/01-Nov-2025",
+        taxdump = DATABASES['taxdump'],
         top_n = 10
     log:
         "{prefix}/lca.log"
     conda:
-        "taxonkit"
+        "../../envs/taxonkit.yaml"
     shell:
         """
         echo "Starting LCA calculation" > {log}

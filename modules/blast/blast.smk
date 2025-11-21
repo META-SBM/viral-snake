@@ -1,4 +1,3 @@
-BLAST_DB = "/mnt/mgx/DATABASES/blast/core_nt/01-Nov-2025/core_nt"
 rule blastn_nt:
     input:
         fasta = "assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/contigs.fa"
@@ -7,13 +6,13 @@ rule blastn_nt:
     benchmark:
         "assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/blast/{database}/blast.becnhmark.txt"
     params:
-        db = BLAST_DB,
+        db = DATABASES['blast_nt'],
         max_target_seqs = 5,
         evalue = "1e-5",
         max_hsps = 3
     threads: 6
     conda:
-        "blast"
+        "../../envs/blast.yaml"
     shell:
         """
         blastn -query {input.fasta} \
@@ -32,9 +31,9 @@ rule add_taxonomy_to_blast:
     output:
         blast_taxonomy = "assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/blast/{database}/blastn_with_taxonomy.tsv"
     params:
-        taxdump = "/mnt/mgx/DATABASES/taxdump/01-Nov-2025"
+        taxdump = DATABASES['taxdump']
     conda:
-        "taxonkit"
+        "../../envs/taxonkit.yaml"
     shell:
         """
         # Extract unique tax IDs

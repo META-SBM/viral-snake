@@ -11,6 +11,13 @@ logs/
 results/
 output/
 
+
+# User-specific config
+config/config.yaml
+
+# Keep the template
+!config/config.template.yaml
+
 # Conda/Mamba environments created by Snakemake
 .snakemake/conda/
 .snakemake/singularity/

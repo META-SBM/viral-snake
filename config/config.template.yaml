@@ -1,0 +1,24 @@
+# Database paths - EDIT THESE for your system
+databases:
+  blast_nt: "/path/to/your/blast/core_nt/database"
+  diamond_nr: "/path/to/your/diamond/nr/database"
+  kraken2: "/path/to/your/kraken2/database"
+  taxdump: "/path/to/your/taxdump/directory"
+
+# Pipeline parameters
+params:
+  kraken2:
+    confidence: 0.4
+    read_length: 150
+    bracken_level: "S"
+    bracken_threshold: 10
+  
+  diamond:
+    block_size: 20.0
+    max_target_seqs: 10
+    evalue: "1e-5"
+  
+  blast:
+    max_target_seqs: 5
+    max_hsps: 3
+    evalue: "1e-5"

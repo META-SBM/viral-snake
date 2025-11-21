@@ -4,7 +4,7 @@ rule profile_contigs:
     output:
         stats = "{prefix}/contigs_formatted_minlen_{min_len}/contig_stats.tsv"
     conda:
-        "seqkit"
+        "../../envs/seqkit.yaml"
     threads: 1
     shell:
         """
@@ -22,7 +22,7 @@ rule quast_individual:
         report = "assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/report.html"
     threads: 8
     conda:
-        "envs/qc.yaml"
+        "../../envs/qc.yaml"
     shell:
         """
         quast.py {input.contigs} \
@@ -54,7 +54,7 @@ rule quast_comparison:
         outdir = "qc/quast/comparison/{qc_filter}/{sample}"
     threads: 8
     conda:
-        "envs/qc.yaml"
+        "../../envs/qc.yaml"
     shell:
         """
         quast.py {input.megahit} {input.metaspades} \

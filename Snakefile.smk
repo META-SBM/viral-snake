@@ -11,8 +11,47 @@ from viral_snake.collections import load_collections_from_dir, validate_collecti
 # Configuration
 # ============================================================================
 
+# Load configuration
+configfile: "config/config.yaml"
+DATABASES = config['databases']
+print(DATABASES)
+
 WORKDIR = config.get("workdir")
 workdir: WORKDIR
+
+
+# ============================================================================
+# Include Modules
+# ============================================================================
+
+# QC
+include: "modules/qc/cutadapt.smk"
+include: "modules/qc/fastqc.smk"
+include: "modules/qc/read_stats.smk"
+
+# Assembly
+include: "modules/assembly/megahit.smk"
+include: "modules/assembly/metaspades.smk"
+include: "modules/assembly/qc.smk"
+include: "modules/assembly/anvio.smk"
+
+# Taxonomic classification
+include: "modules/kraken2/kraken2.smk"
+include: "modules/kraken2/kraken2_contigs.smk"
+
+# Homology search
+include: "modules/blast/blast.smk"
+include: "modules/diamond/diamond.smk"
+include: "modules/diamond/diamond_filter.smk"
+include: "modules/diamond/diamond_lca_taxonkit.smk"
+
+# Mapping and clustering
+include: "modules/minimap2/minimap2.smk"
+include: "modules/mmseqs2/cluster.smk"
+
+# ============================================================================
+# Target Rules
+# ============================================================================
 
 # Pipeline parameters
 QC_FILTER = "raw__cutadapt_no_mgi_min_len_90"
@@ -42,38 +81,6 @@ REFERENCE_GENOMES = discover_references(
 )
 print(f"Found {len(REFERENCE_GENOMES)} reference genomes")
 
-# ============================================================================
-# Include Modules
-# ============================================================================
-
-# QC
-include: "modules/qc/cutadapt.smk"
-include: "modules/qc/fastqc.smk"
-include: "modules/qc/read_stats.smk"
-
-# Assembly
-include: "modules/assembly/megahit.smk"
-include: "modules/assembly/metaspades.smk"
-include: "modules/assembly/qc.smk"
-include: "modules/assembly/anvio.smk"
-
-# Taxonomic classification
-include: "modules/kraken2/kraken2.smk"
-include: "modules/kraken2/kraken2_contigs.smk"
-
-# Homology search
-include: "modules/blast/blast.smk"
-include: "modules/diamond/diamond.smk"
-include: "modules/diamond/diamond_filter.smk"
-include: "modules/diamond/diamond_lca_taxonkit.smk"
-
-# Mapping and clustering
-include: "modules/minimap2.smk"
-include: "modules/mmseqs2/cluster.smk"
-
-# ============================================================================
-# Target Rules
-# ============================================================================
 
 rule all:
     input:
