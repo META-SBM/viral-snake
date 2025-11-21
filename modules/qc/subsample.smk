@@ -16,3 +16,4 @@ rule subsample_reads:
         """
         seqtk sample -s {params.seed} {input.r1} {wildcards.n_reads} | gzip > {output.r1} 2> {log}
         seqtk sample -s {params.seed} {input.r2} {wildcards.n_reads} | gzip > {output.r2} 2>> {log}
+        """
