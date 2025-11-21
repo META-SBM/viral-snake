@@ -1,105 +1,108 @@
 # Snakefile for tick metavirome assembly pipeline
 
-import yaml
-import glob
 import os
+import sys
+from pathlib import Path
 
-# Including all submodules
-include: "modules/mmseqs2/cluster.smk"
-include: "modules/assembly/anvio.smk"
-include: "modules/diamond/diamond.smk"
-include: "modules/minimap2.smk"
+from viral_snake.utils import get_samples, discover_references
+from viral_snake.collections import load_collections_from_dir, validate_collections
 
+# ============================================================================
+# Configuration
+# ============================================================================
+
+WORKDIR = config.get("workdir")
+workdir: WORKDIR
+
+# Pipeline parameters
+QC_FILTER = "raw__cutadapt_no_mgi_min_len_90"
+ASSEMBLERS = ["megahit"]
+MIN_CONTIG_LENGTH = 800
+
+# ============================================================================
+# Discovery
+# ============================================================================
+
+# Discover samples
+SAMPLES = get_samples(os.path.join(WORKDIR, 'reads/raw'))
+print(f"Found {len(SAMPLES)} samples: {SAMPLES[:5]}..." if len(SAMPLES) > 5 else f"Found samples: {SAMPLES}")
+
+# Discover collections
+COLLECTION_DIR = Path(WORKDIR) / "sample_collections"
+COLLECTIONS = load_collections_from_dir(COLLECTION_DIR)
+print(f"Found {len(COLLECTIONS)} collections: {list(COLLECTIONS.keys())}")
+
+if COLLECTIONS:
+    validate_collections(COLLECTIONS, SAMPLES)
+
+# Discover reference genomes
+REFERENCE_GENOMES = discover_references(
+    os.path.join(WORKDIR, 'refseq_reference'),
+    pattern='*/ncbi_dataset/data/genomic.fna'
+)
+print(f"Found {len(REFERENCE_GENOMES)} reference genomes")
+
+# ============================================================================
+# Include Modules
+# ============================================================================
+
+# QC
 include: "modules/qc/cutadapt.smk"
 include: "modules/qc/fastqc.smk"
 include: "modules/qc/read_stats.smk"
 
-include: "modules/kraken2/kraken2.smk"
-include: "modules/kraken2/kraken2_contigs.smk"
-include: "modules/blast/blast.smk"
-
+# Assembly
 include: "modules/assembly/megahit.smk"
 include: "modules/assembly/metaspades.smk"
 include: "modules/assembly/qc.smk"
+include: "modules/assembly/anvio.smk"
 
+# Taxonomic classification
+include: "modules/kraken2/kraken2.smk"
+include: "modules/kraken2/kraken2_contigs.smk"
 
-# Get workdir from config or use default
-WORKDIR = config.get("workdir")
+# Homology search
+include: "modules/blast/blast.smk"
+include: "modules/diamond/diamond.smk"
+include: "modules/diamond/diamond_filter.smk"
+include: "modules/diamond/diamond_lca_taxonkit.smk"
 
-workdir: WORKDIR
+# Mapping and clustering
+include: "modules/minimap2.smk"
+include: "modules/mmseqs2/cluster.smk"
 
-# SAMPLES = ["KLP_168"]
-# print(os.path.join(WORKDIR, 'reads/raw', '*_1.fq'))
-# SAMPLES = glob.glob(os.path.join(WORKDIR, 'reads/raw', '*_1.fq'))
-# SAMPLES = [s.split('/')[-1].replace('_1.fq', '') for s in SAMPLES]
-
-# print(os.path.join(WORKDIR, 'reads/raw', '*_1.fq'))
-SAMPLES = glob.glob(os.path.join(WORKDIR, 'reads/raw', '*_R1.fastq.gz'))
-SAMPLES = [s.split('/')[-1].replace('_R1.fastq.gz', '') for s in SAMPLES]
-
-# print(SAMPLES)
-QC_FILTER = "raw__cutadapt_no_mgi_min_len_90"
-ASSEMBLERS = ["megahit", "metaspades", "megahit_rna"]
-ASSEMBLERS = ["megahit"]
-
-
-# Discover collections
-COLLECTION_DIR = Path(WORKDIR) / "sample_collections"
-COLLECTIONS = {}
-if COLLECTION_DIR.exists():
-    for yaml_file in COLLECTION_DIR.glob("*.yaml"):
-        with open(yaml_file) as f:
-            coll = yaml.safe_load(f)
-            COLLECTIONS[coll['name']] = coll
-
-COOLS = ['gus_khrustalny_district__novoopokino_village_dermacentor_reticulatus', 'gvardeysky_district__konstantinovka_settlement_dermacentor_reticulatus',	'chuguyevsky_district__zhuravlevka_river_ixodes_persulcatus', 'chuguyevsky_district__zhuravlevka_river_haemophysalis_japonica', 'blagoveshchensky_district__jsc_polief_dermacentor']
-
-refs = glob.glob(os.path.join(WORKDIR, 'refseq_reference/*', 'ncbi_dataset/data/genomic.fna'))
-refs = [r.split('/')[-4] for r in refs]
-# print(refs)
-
+# ============================================================================
+# Target Rules
+# ============================================================================
 
 rule all:
     input:
-        # FastQC reports
+        # QC reports
         expand("qc/read_stats/{qc_filter}/{sample}_read_counts.tsv",
                qc_filter=QC_FILTER, sample=SAMPLES),
-        # Co-assemblies
-        # expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/contigs.fa",
-        #        assembler=ASSEMBLERS, collection=list(COLLECTIONS.keys()), min_len=3000),
+        
+        # Co-assemblies with DIAMOND annotation
         expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/hits_with_taxonomy.tsv",
-               assembler=ASSEMBLERS, collection=COLLECTIONS, min_len=800),
-        # expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/contig_stats.tsv",
-        #        assembler=ASSEMBLERS, collection=list(COLLECTIONS.keys()), min_len=800),
+               assembler=ASSEMBLERS, 
+               collection=COLLECTIONS, 
+               min_len=MIN_CONTIG_LENGTH),
+        
+        # Filtered DIAMOND results
+        expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/{filter_preset}/hits.tsv",
+               assembler=ASSEMBLERS,
+               collection=COLLECTIONS,
+               min_len=MIN_CONTIG_LENGTH,
+               filter_preset=["viral_strict", "bacterial"]),
+        
+        # Reference mapping
         expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/minimap2/{reference_org}/alignments.sorted.bam",
-               assembler=ASSEMBLERS, collection=COLLECTIONS, min_len=800, reference_org=refs)
+               assembler=ASSEMBLERS,
+               collection=COLLECTIONS,
+               min_len=MIN_CONTIG_LENGTH,
+               reference_org=REFERENCE_GENOMES),
 
-        # Assemblies
-        # expand("assembly/{assembler}/{qc_filter}/{sample}/contigs.fa",
-        #        assembler=ASSEMBLERS, qc_filter=QC_FILTER, sample=SAMPLES),
-        # Individual QUAST reports
-        # expand("assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/contig_stats.tsv",
-        #        assembler=ASSEMBLERS, qc_filter=QC_FILTER, sample=SAMPLES, min_len=300),
-        # expand("assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/kraken2/confidence_{confidence}/kraken2_output_with_taxonomy.tsv",
-        #        assembler=ASSEMBLERS, qc_filter=QC_FILTER, sample=SAMPLES, min_len=300,confidence=0.01),
-        # expand("assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/diamond/{database}/hits_with_taxonomy.tsv",
-        #        assembler=ASSEMBLERS, qc_filter=QC_FILTER, sample=SAMPLES[0], min_len=1000, database="NR"),
-
-        # expand("assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/blast/{database}/blastn.tsv",
-        #        assembler=ASSEMBLERS, qc_filter=QC_FILTER, sample=SAMPLES, min_len=300, database="core_nt"),
-        # expand("assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/blast/{database}/blastn_with_taxonomy.tsv",
-        #        assembler=ASSEMBLERS, qc_filter=QC_FILTER, sample=SAMPLES[0], min_len=300, database="core_nt"),
-
-
-
-        # expand("kraken2/{qc_filter}/{sample}.bracken.report",
-        #        qc_filter=QC_FILTER, sample=SAMPLES),
-        # "feature_tables/bracken-species-all-0.4-min-len-90/taxonomy_table.tsv",
-        # Comparison QUAST report
-        # expand("qc/quast/comparison/{qc_filter}/{sample}/report.html",
-        #        qc_filter=QC_FILTER, sample=SAMPLES),
-    #     expand("annotation/virsorter2/megahit/{qc_filter}/{sample}/final-viral-combined.fa",
-	#    qc_filter=QC_FILTER, sample=SAMPLES)
-
-        # expand("assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/deduplicated_id95_cov85/contigs_deduplicated.fa",
-        #     assembler=ASSEMBLERS, qc_filter=QC_FILTER, sample=SAMPLES[0], min_len=300)
+        # LCA for all DIAMOND hits
+        expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/contig_lca_detailed.tsv",
+               assembler=ASSEMBLERS,
+               collection=COLLECTIONS,
+               min_len=MIN_CONTIG_LENGTH),
