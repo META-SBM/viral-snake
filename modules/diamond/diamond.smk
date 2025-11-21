@@ -1,5 +1,3 @@
-NR_DB = "/mnt/mgx/DATABASES/blast/nr/01-Nov-2025/nr"
-
 rule diamond_blastx_unified:
     """DIAMOND BLASTX for both individual assemblies and co-assemblies"""
     input:
@@ -7,26 +5,27 @@ rule diamond_blastx_unified:
     output:
         hits = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/hits.txt"
     params:
-        preset_flag = lambda wildcards: "--" + wildcards.preset.replace("_", "-")
+        preset_flag = lambda wildcards: "--" + wildcards.preset.replace("_", "-"),
+        db = DATABASES['diamond_nr']
     threads: 32
     log:
         "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/diamond.log"
     benchmark:
         "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/diamond.benchmark.txt"
     conda:
-        "diamond"
+        "../../envs/diamond.yaml"
     shell:
         """
         echo "=== Running DIAMOND BLASTX ===" | tee {log}
         echo "Input contigs: {input.contigs}" | tee -a {log}
-        echo "Database: {NR_DB}" | tee -a {log}
+        echo "Database: {params.db}" | tee -a {log}
         echo "Output: {output.hits}" | tee -a {log}
         echo "Preset: {params.preset_flag}" | tee -a {log}
         echo "Threads: {threads}" | tee -a {log}
         echo "" | tee -a {log}
         
         diamond blastx \
-            -d {NR_DB} \
+            -d {params.db} \
             -q {input.contigs} \
             -o {output.hits} \
             {params.preset_flag} \
@@ -50,9 +49,9 @@ rule add_taxonomy_to_diamond:
     output:
         diamond_taxonomy = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/hits_with_taxonomy.tsv"
     params:
-        taxdump = "/mnt/mgx/DATABASES/taxdump/01-Nov-2025"
+        taxdump = DATABASES['taxdump']
     conda:
-        "taxonkit"
+        "../../envs/taxonkit.yaml"
     shell:
         """
         # Extract unique tax IDs from column 14, handling multiple taxids separated by semicolons

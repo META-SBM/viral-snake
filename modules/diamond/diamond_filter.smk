@@ -42,8 +42,6 @@ rule filter_diamond:
         filter_preset = "|".join(DIAMOND_FILTER_PRESETS.keys())
     log:
         "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/filter.log"
-    # conda:
-    #     "diamond"
     shell:
         """
         python {MODULE_DIR}/filter_diamond.py \

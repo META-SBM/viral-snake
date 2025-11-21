@@ -7,15 +7,15 @@ from pathlib import Path
 from viral_snake.utils import get_samples, discover_references
 from viral_snake.collections import load_collections_from_dir, validate_collections
 
-# ============================================================================
-# Configuration
-# ============================================================================
+include: "Snakefile.base.smk"
 
-WORKDIR = config.get("workdir")
-workdir: WORKDIR
+# ============================================================================
+# Target Rules
+# ============================================================================
 
 # Pipeline parameters
 QC_FILTER = "raw__cutadapt_no_mgi_min_len_90"
+QC_FILTER = "raw"
 ASSEMBLERS = ["megahit"]
 MIN_CONTIG_LENGTH = 800
 
@@ -42,43 +42,14 @@ REFERENCE_GENOMES = discover_references(
 )
 print(f"Found {len(REFERENCE_GENOMES)} reference genomes")
 
-# ============================================================================
-# Include Modules
-# ============================================================================
-
-# QC
-include: "modules/qc/cutadapt.smk"
-include: "modules/qc/fastqc.smk"
-include: "modules/qc/read_stats.smk"
-
-# Assembly
-include: "modules/assembly/megahit.smk"
-include: "modules/assembly/metaspades.smk"
-include: "modules/assembly/qc.smk"
-include: "modules/assembly/anvio.smk"
-
-# Taxonomic classification
-include: "modules/kraken2/kraken2.smk"
-include: "modules/kraken2/kraken2_contigs.smk"
-
-# Homology search
-include: "modules/blast/blast.smk"
-include: "modules/diamond/diamond.smk"
-include: "modules/diamond/diamond_filter.smk"
-include: "modules/diamond/diamond_lca_taxonkit.smk"
-
-# Mapping and clustering
-include: "modules/minimap2.smk"
-include: "modules/mmseqs2/cluster.smk"
-
-# ============================================================================
-# Target Rules
-# ============================================================================
 
 rule all:
     input:
+       # # Subsample for test
+       # expand("qc/read_stats/{qc_filter}/{sample}_read_counts.tsv",
+       #         qc_filter='raw__cutadapt_no_mgi_min_len_90__subsample_100000', sample=SAMPLES[0:10]),
         # QC reports
-        expand("qc/read_stats/{qc_filter}/{sample}_read_counts.tsv",
+       expand("qc/read_stats/{qc_filter}/{sample}_read_counts.tsv",
                qc_filter=QC_FILTER, sample=SAMPLES),
         
         # Co-assemblies with DIAMOND annotation
@@ -88,10 +59,11 @@ rule all:
                min_len=MIN_CONTIG_LENGTH),
         
         # Filtered DIAMOND results
-        expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/{filter_preset}/hits.tsv",
+        expand("assembly/{assembler}/raw/{sample}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/{filter_preset}/hits.tsv",
                assembler=ASSEMBLERS,
                collection=COLLECTIONS,
                min_len=MIN_CONTIG_LENGTH,
+               sample=SAMPLES,
                filter_preset=["viral_strict", "bacterial"]),
         
         # Reference mapping

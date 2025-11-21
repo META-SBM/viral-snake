@@ -1,0 +1,6 @@
+# Database paths - EDIT THESE for your system
+databases:
+  blast_nt: "/path/to/your/blast/core_nt/database"
+  diamond_nr: "/path/to/your/diamond/nr/database"
+  kraken2: "/path/to/your/kraken2/database"
+  taxdump: "/path/to/your/taxdump/directory"

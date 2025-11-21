@@ -14,7 +14,7 @@ rule minimap2_align_to_references:
     benchmark:
         "{prefix}/contigs_formatted_minlen_{min_len}/minimap2/{reference_org}/minimap2.benchmark.txt"
     conda:
-        "minimap2"
+        "../../envs/minimap2.yaml"
     shell:
         """
         echo "=== Running Minimap2 alignment ===" | tee {log}

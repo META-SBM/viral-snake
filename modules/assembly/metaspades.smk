@@ -11,7 +11,7 @@ rule metaspades:
     resources:
         mem_mb = 500000  # 500GB
     conda:
-        "envs/assembly.yaml"
+        "../../envs/assembly.yaml"
     shell:
         """
         rm -rf {params.outdir}

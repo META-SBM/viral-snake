@@ -5,12 +5,12 @@ rule kraken2_classify_contigs:
         report = "assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/kraken2/confidence_{confidence}/kraken2.report",
         output = "assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/kraken2/confidence_{confidence}/kraken2.output"
     params:
-        db = KRAKEN_DB
+        db = DATABASES['kraken2']
     log:
         "assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/kraken2/confidence_{confidence}/kraken2.log"
     threads: 32
     conda:
-        "kraken2"
+        "../../envs/kraken2.yaml"
     shell:
         """
         k2 classify --db {params.db} \
@@ -29,9 +29,9 @@ rule add_taxonomy_to_kraken2_contigs:
     output:
         kraken_taxonomy = "assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/kraken2/confidence_{confidence}/kraken2_output_with_taxonomy.tsv"
     params:
-        taxdump = "/mnt/mgx/DATABASES/taxdump/01-Nov-2025"
+        taxdump = DATABASES['taxdump']
     conda:
-        "taxonkit"
+        "../../envs/taxonkit.yaml"
     shell:
         """
         # Extract unique tax IDs from column 3 (skip unclassified with taxid 0)

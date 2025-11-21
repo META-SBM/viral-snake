@@ -6,7 +6,7 @@ rule count_reads:
         stats = "qc/read_stats/{qc_filter}/{sample}_read_counts.tsv"
     threads: 4
     conda:
-        "seqkit"
+        "../../envs/seqkit.yaml"
     shell:
         """
         # Count reads in both files

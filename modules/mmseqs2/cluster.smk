@@ -16,7 +16,7 @@ rule mmseqs_deduplicate:
     log:
         "assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/deduplicated_id{identity}_cov{coverage}/log"
     conda:
-        "mmseqs2"
+        "../../envs/mmseqs2.yaml"
     shell:
         """
         TMPDIR=$(mktemp -d -p . mmseqs_tmp.XXXXXX)
