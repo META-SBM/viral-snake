@@ -8,7 +8,8 @@ rule megahit:
         "assembly/megahit/{qc_filter}/{sample}/benchmark.txt"
     params:
         basedir = "assembly/megahit/{qc_filter}/{sample}",
-        tmpdir = "assembly/megahit/{qc_filter}/{sample}/tmp_megahit"
+        tmpdir = "assembly/megahit/{qc_filter}/{sample}/tmp_megahit",
+        intermediate_contigs_dir = "assembly/megahit/{qc_filter}/{sample}/intermediate_contigs"
     threads: THREADS['megahit']
     log:
         "assembly/megahit/{qc_filter}/{sample}/megahit.log"
@@ -39,6 +40,10 @@ rule megahit:
         
         # Clean up empty temp directory
         rm -rf {params.tmpdir}
+
+        # Clean up intermediate_contigs directory
+        rm -rf {params.intermediate_contigs_dir}
+
         """
 
 rule megahit_coassembly:

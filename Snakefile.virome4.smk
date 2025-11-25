@@ -14,8 +14,7 @@ include: "Snakefile.base.smk"
 # ============================================================================
 
 # Pipeline parameters
-QC_FILTER = "raw__cutadapt_no_mgi_min_len_90"
-QC_FILTER = "raw__cutadapt_mgi_virome"
+QC_FILTER = "raw__cutadapt_mgi_virome4"
 ASSEMBLERS = ["megahit"]
 MIN_CONTIG_LENGTH = 700
 
@@ -49,17 +48,26 @@ rule all:
        # expand("qc/read_stats/{qc_filter}/{sample}_read_counts.tsv",
        #         qc_filter='raw__cutadapt_no_mgi_min_len_90__subsample_100000', sample=SAMPLES[0:10]),
         # QC reports
-       expand("qc/read_stats/{qc_filter}/{sample}_read_counts.tsv",
+        expand("qc/read_stats/{qc_filter}/{sample}_read_counts.tsv",
                qc_filter=QC_FILTER, sample=SAMPLES),
 
+        expand("reads/raw__barcode_rescue/{sample}/", sample=SAMPLES[0:1]),
+
+        expand("qc/fastqc/{qc_filter}/{sample}_R{read}_fastqc.html",
+               qc_filter='raw', sample=SAMPLES, read = ['1', '2']),
+        expand("kraken2/{confidence}/{qc_filter}/{sample}.bracken",
+                qc_filter=QC_FILTER, sample=SAMPLES, confidence = '0.5'
+            ),
+        expand("feature_tables/{feature_table_id}/taxonomy_table.tsv",
+            feature_table_id='bracken-species-all-0.5-min-len-90'),
         # # Filtered DIAMOND results
-        # expand("assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/hits_with_taxonomy.tsv",
-        #        assembler=ASSEMBLERS,
-        #        qc_filter=QC_FILTER,
-        #        min_len=MIN_CONTIG_LENGTH,
-        #        sample=SAMPLES[110:120]),
+        expand("assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/contig_summary.tsv",
+               assembler=ASSEMBLERS,
+               qc_filter=QC_FILTER,
+               min_len=MIN_CONTIG_LENGTH,
+               sample=SAMPLES),
         
-       #  # Co-assemblies with DIAMOND annotation
+        # Co-assemblies with DIAMOND annotation
         expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/hits_with_taxonomy.tsv",
                assembler=ASSEMBLERS, 
                collection=['ALL_SAMPLES_MERGED'], 

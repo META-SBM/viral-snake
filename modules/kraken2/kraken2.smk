@@ -3,13 +3,14 @@ rule kraken2_classify:
         r1 = "reads/{qc_filter}/{sample}_R1.fastq.gz",
         r2 = "reads/{qc_filter}/{sample}_R2.fastq.gz"
     output:
-        report = "kraken2/{qc_filter}/{sample}.kraken2.report",
-        output = "kraken2/{qc_filter}/{sample}.kraken2.output"
+        report = "kraken2/{confidence}/{qc_filter}/{sample}.kraken2.report",
+        output = "kraken2/{confidence}/{qc_filter}/{sample}.kraken2.output"
     params:
-        db = DATABASES['kraken2'],
-        confidence = 0.4
+        db = DATABASES['kraken2']
+    benchmark:
+        "kraken2/{confidence}/{qc_filter}/{sample}.kraken2.benchmark.txt"
     log:
-        "kraken2/{qc_filter}/{sample}.kraken2.log"
+        "kraken2/{confidence}/{qc_filter}/{sample}.kraken2.log"
     threads: THREADS['kraken2']
     conda:
         "../../envs/kraken2.yaml"
@@ -18,7 +19,7 @@ rule kraken2_classify:
         k2 classify --db {params.db} \
             --threads {threads} \
             --paired \
-            --confidence {params.confidence} \
+            --confidence {wildcards.confidence} \
             --memory-mapping \
             --report {output.report} \
             --output {output.output} \
@@ -29,15 +30,15 @@ rule kraken2_classify:
 
 rule bracken_abundance:
     input:
-        report  = "kraken2/{qc_filter}/{sample}.kraken2.report"
+        report  = "kraken2/{confidence}/{qc_filter}/{sample}.kraken2.report"
     output:
-        bracken = "kraken2/{qc_filter}/{sample}.bracken",
-        report  = "kraken2/{qc_filter}/{sample}.bracken.report"
+        bracken = "kraken2/{confidence}/{qc_filter}/{sample}.bracken",
+        report  = "kraken2/{confidence}/{qc_filter}/{sample}.bracken.report"
     params:
         db = DATABASES['kraken2'],
         read_len = 150,  # CHANGE THIS to match your actual read length
         level = "S",     # S=Species, G=Genus, F=Family, etc.
-        threshold = 10   # Minimum number of reads required
+        threshold = 1   # Minimum number of reads required
     threads: 1
     conda:
         "../../envs/kraken2.yaml"
@@ -64,7 +65,7 @@ def get_bracken_table_inputs(wildcards):
     qc_filter = meta['qc_filter']
     samples = meta['samples']
     
-    return [f"kraken2/{qc_filter}/{sample}.bracken" for sample in samples]
+    return [f"kraken2/0.5/{qc_filter}/{sample}.bracken" for sample in samples]
 
 
 def get_abundance_metric(wildcards):
@@ -86,7 +87,7 @@ rule build_bracken_abundance_table:
         input_args = lambda wildcards, input: ' '.join([f'-i {f}' for f in input.files])
     shell:
         """
-        python ~/MGX/scripts/build_abundance_table.py \
+        python ~/MGX/viral-snake/scripts/build_abundance_table.py \
             {params.input_args} \
             --abundance-metric {params.metric} \
             --output {output.table}
