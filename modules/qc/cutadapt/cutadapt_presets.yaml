@@ -1,0 +1,28 @@
+# Cutadapt QC presets
+presets:
+  mgi_virome4:
+    adapter_r1: "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC"
+    adapter_r2: "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
+    quality: 10
+    min_length: 90
+    discard_trimmed: true
+    pair_filter: "any"
+    description: "Standard MGI adapter removal, Q10 trim, 90bp minimum, discard reads with adapters"
+  
+  mgi_virome:
+    adapter_r1: "AAGTCGGAGGCCAAGCGGTCTTAGGAAGACAA"
+    adapter_r2: "AAGTCGGATCGTAGCCATGTCGTTCTGTGAGCCAAGGAGT"
+    quality: 10
+    min_length: 90
+    discard_trimmed: true
+    pair_filter: "any"
+    description: "Standard MGI adapter removal, Q10 trim, 90bp minimum, discard reads with adapters"
+  
+  mgi_no_dimers:
+    adapter_r1: "AAGTCGGAGGCCAAGCGGTCTTAGGAAGACAA"
+    adapter_r2: "AAGTCGGATCGTAGCCATGTCGTTCTGTGAGCCAAGGAGT"
+    quality: 10
+    min_length: 90
+    discard_trimmed: true
+    pair_filter: "any"
+    description: "MGI trimming with adapter dimer removal (discard reads with adapters)"

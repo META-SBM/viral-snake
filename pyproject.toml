@@ -13,10 +13,12 @@ dependencies = [
     "snakemake>=7.0.0",
     "pyyaml",
     "pandas",
+    "click>=8.0",
+    "rich>=13.0",
 ]
 
-[tool.setuptools]
-packages = ["viral_snake"]
+[project.scripts]
+viral-snake = "viral_snake.cli:main"
 
 [project.optional-dependencies]
 dev = [
@@ -24,3 +26,9 @@ dev = [
     "black",
     "ruff",
 ]
+
+[tool.setuptools]
+packages = ["viral_snake"]
+
+[tool.setuptools.package-data]
+viral_snake = ["py.typed"]

@@ -3,7 +3,7 @@
 
 import os
 from pathlib import Path
-
+import pandas as pd
 # ============================================================================
 # Configuration
 # ============================================================================
@@ -41,7 +41,8 @@ workdir: WORKDIR
 # ============================================================================
 
 # QC
-include: "modules/qc/cutadapt.smk"
+include: "modules/qc/cutadapt/cutadapt.smk"
+include: "modules/qc/cutadapt/cutadapt_barcode_rescue.smk"
 include: "modules/qc/fastqc.smk"
 include: "modules/qc/read_stats.smk"
 include: "modules/qc/subsample.smk"

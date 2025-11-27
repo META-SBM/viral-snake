@@ -4,7 +4,7 @@ presets:
     sensitivity_flag: "--faster"
     block_size: 20.0
     index_chunks: 1
-    max_target_seqs: 10
+    max_target_seqs: 25
     evalue: "1e-5"
     description: "Fast mode for quick screening"
   

@@ -35,3 +35,8 @@ pip install anvio-8.tar.gz
 И проставить `--conda-prefix` - тогда окружения будут жить в этой папочке и не пересоздаваться при смене рабочей директории
 
 `snakemake -s Snakefile.smk --use-conda --cores 320 --config workdir=/mnt/mgx/DATASETS/INTERNAL/VIROME/TEST --rerun-incomplete --latency-wait 100 --conda-prefix /mnt/mgx/RUNS/fedorov_de/SNAKE-CONDA --rerun-triggers mtime`
+
+
+# Менеджмент
+
+`viral-snake info samples /mnt/mgx/DATASETS/INTERNAL/VIROME/VIROME4`
