@@ -2,7 +2,7 @@ import yaml
 from pathlib import Path
 
 # Load diamond filter presets
-MODULE_DIR = Path(workflow.basedir) / "modules/diamond"
+MODULE_DIR = Path(workflow.basedir) / "modules/diamond/filter"
 
 with open(MODULE_DIR / "presets.yaml") as f:
     DIAMOND_FILTER_PRESETS = yaml.safe_load(f)['filters']

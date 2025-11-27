@@ -93,7 +93,20 @@ rule all:
                assembler=ASSEMBLERS, 
                collection=['ALL_SAMPLES_MERGED_RESCUED'], 
                min_len=MIN_CONTIG_LENGTH),
+
+        expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/viral_strict/hits.tsv",
+               assembler=ASSEMBLERS, 
+               collection=['ALL_SAMPLES_MERGED_RESCUED'], 
+               min_len=MIN_CONTIG_LENGTH),
         
+        expand(
+            "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/download_summary.txt",
+            prefix="co_assembly/megahit/ALL_SAMPLES_MERGED_RESCUED",
+            min_len=700,
+            preset="faster",
+            database="NR",
+            filter_preset="viral_strict"
+        )
        #  # Filtered DIAMOND results
        #  expand("assembly/{assembler}/raw/{sample}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/{filter_preset}/hits.tsv",
        #         assembler=ASSEMBLERS,

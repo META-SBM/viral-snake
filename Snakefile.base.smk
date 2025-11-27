@@ -4,6 +4,10 @@
 import os
 from pathlib import Path
 import pandas as pd
+
+import sys
+sys.path.insert(0, "modules")
+
 # ============================================================================
 # Configuration
 # ============================================================================
@@ -60,9 +64,11 @@ include: "modules/kraken2/kraken2_contigs.smk"
 # Homology search
 include: "modules/blast/blast.smk"
 include: "modules/diamond/diamond.smk"
-include: "modules/diamond/diamond_filter.smk"
+include: "modules/diamond/filter/diamond_filter.smk"
 include: "modules/diamond/diamond_lca_taxonkit.smk"
 
 # Mapping and clustering
 include: "modules/minimap2/minimap2.smk"
 include: "modules/mmseqs2/cluster.smk"
+
+include: "modules/dwn_refs_from_refseq/dwn_refs.smk"
