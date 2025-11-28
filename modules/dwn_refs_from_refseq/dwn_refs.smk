@@ -85,6 +85,8 @@ rule download_genome_by_taxid:
     One instance of this rule per taxid from checkpoint.
     Folder name includes both taxid and species for clarity.
     """
+    input:
+        taxid_list = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/taxids_for_download.tsv"
     output:
         genome = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/genomic.fna",
         protein = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/protein.faa",

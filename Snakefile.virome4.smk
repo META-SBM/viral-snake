@@ -89,7 +89,7 @@ rule all:
         #        sample=SAMPLES),
         
         # Co-assemblies with DIAMOND annotation
-        expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/hits_with_taxonomy.tsv",
+        expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/diamond_ultra_sensitive/NR/hits_with_taxonomy.tsv",
                assembler=ASSEMBLERS, 
                collection=['ALL_SAMPLES_MERGED_RESCUED'], 
                min_len=MIN_CONTIG_LENGTH),
