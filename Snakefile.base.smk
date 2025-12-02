@@ -72,3 +72,5 @@ include: "modules/minimap2/minimap2.smk"
 include: "modules/mmseqs2/cluster.smk"
 
 include: "modules/dwn_refs_from_refseq/dwn_refs.smk"
+
+include: "modules/strobealign/strobealign.smk"

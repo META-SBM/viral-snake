@@ -2,9 +2,9 @@ import yaml
 from pathlib import Path
 
 # Load diamond filter presets
-MODULE_DIR = Path(workflow.basedir) / "modules/diamond/filter"
+DIAMOND_FILTER_DIR = Path(workflow.basedir) / "modules/diamond/filter"
 
-with open(MODULE_DIR / "presets.yaml") as f:
+with open(DIAMOND_FILTER_DIR / "presets.yaml") as f:
     DIAMOND_FILTER_PRESETS = yaml.safe_load(f)['filters']
 
 
@@ -44,7 +44,7 @@ rule filter_diamond:
         "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/filter.log"
     shell:
         """
-        python {MODULE_DIR}/filter_diamond.py \
+        python {DIAMOND_FILTER_DIR}/filter_diamond.py \
             {input.hits} \
             {output.hits} \
             {params.filter_cmd} \

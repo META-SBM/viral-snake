@@ -49,8 +49,27 @@ rule all:
        # expand("qc/read_stats/{qc_filter}/{sample}_read_counts.tsv",
        #         qc_filter='raw__cutadapt_no_mgi_min_len_90__subsample_100000', sample=SAMPLES[0:10]),
         # QC reports
-       expand("qc/read_stats/{qc_filter}/{sample}_read_counts.tsv",
-               qc_filter=QC_FILTER, sample=SAMPLES),
+        expand("qc/read_stats/{qc_filter}/{sample}_read_counts.tsv",
+               qc_filter='raw', sample=SAMPLES),
+
+        expand('qc/read_stats/collections/ALL_RAW_read_stats.tsv')
+
+                
+        # expand(
+        #     "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/download_summary.txt",
+        #     prefix="co_assembly/megahit/ALL_SAMPLES_MERGED",
+        #     min_len=700,
+        #     preset="faster",
+        #     database="NR",
+        #     filter_preset="viral_strict"
+        # ),
+
+        # Reference mapping
+        # expand(
+        #     "alignment/strobealign__default/references/ICTV_DB/ICTV_DB.sanitized/__reads__/{query_qc}/{sample}/coverage.tsv",
+        #     query_qc=QC_FILTER,
+        #     sample=SAMPLES
+        # ),
 
         # # Filtered DIAMOND results
         # expand("assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/hits_with_taxonomy.tsv",
@@ -59,11 +78,11 @@ rule all:
         #        min_len=MIN_CONTIG_LENGTH,
         #        sample=SAMPLES[110:120]),
         
-       #  # Co-assemblies with DIAMOND annotation
-        expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/hits_with_taxonomy.tsv",
-               assembler=ASSEMBLERS, 
-               collection=['ALL_SAMPLES_MERGED'], 
-               min_len=MIN_CONTIG_LENGTH),
+    #    #  # Co-assemblies with DIAMOND annotation
+    #     expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/hits_with_taxonomy.tsv",
+    #            assembler=ASSEMBLERS, 
+    #            collection=['ALL_SAMPLES_MERGED'], 
+    #            min_len=MIN_CONTIG_LENGTH),
         
        #  # Filtered DIAMOND results
        #  expand("assembly/{assembler}/raw/{sample}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/{filter_preset}/hits.tsv",

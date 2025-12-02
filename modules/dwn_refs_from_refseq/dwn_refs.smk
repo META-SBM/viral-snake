@@ -25,23 +25,69 @@ checkpoint extract_species_for_download:
         taxid_list = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/taxids_for_download.tsv"
     log:
         "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/extract_taxids.log"
-    shell:
-        """
-        # Extract taxid (col 14) and species (col 21)
-        # Split semicolon-separated taxids and take first
-        tail -n +2 {input.hits} | \
-        awk -F'\t' '{{
-            if ($14 != "" && $21 != "") {{
-                split($14, taxids, ";");
-                print taxids[1]"\t"$21
-            }}
-        }}' | \
-        sort -u | \
-        awk 'BEGIN {{print "taxid\tspecies"}} {{print}}' \
-        > {output.taxid_list} 2> {log}
+    run:
+        import pandas as pd
+        import re
         
-        echo "Extracted $(tail -n +2 {output.taxid_list} | wc -l) unique taxids" >> {log}
-        """
+        with open(log[0], 'w') as log_file:
+            try:
+                # Read DIAMOND hits
+                df = pd.read_csv(input.hits, sep='\t')
+                
+                log_file.write(f"Read {len(df)} rows from DIAMOND hits\n")
+                log_file.write(f"Columns: {list(df.columns)}\n\n")
+                
+                # Extract staxids and Species columns
+                subset = df[['staxids', 'Species']].copy()
+                
+                # Drop rows with missing values
+                subset = subset.dropna()
+                subset = subset[subset['staxids'] != '']
+                subset = subset[subset['Species'] != '']
+                
+                log_file.write(f"After filtering empty values: {len(subset)} rows\n")
+                
+                # Handle semicolon-separated taxids (take first)
+                subset['staxids'] = subset['staxids'].astype(str).str.split(';').str[0]
+                
+                # Sanitize species names
+                def sanitize_species(name):
+                    """Remove problematic characters and sanitize for filesystem"""
+                    name = str(name)
+                    # Remove: ' " ` \ / ( ) [ ] { } and other problematic chars
+                    name = re.sub(r"['\"`.:/\\()\[\]{}]", '', name)
+                    # Replace whitespace with underscore
+                    name = re.sub(r'\s+', '_', name)
+                    # Collapse multiple underscores
+                    name = re.sub(r'_+', '_', name)
+                    # Remove leading/trailing underscores
+                    name = name.strip('_')
+                    return name
+                
+                subset['Species'] = subset['Species'].apply(sanitize_species)
+                
+                # Remove duplicates
+                subset = subset.drop_duplicates()
+                
+                log_file.write(f"After removing duplicates: {len(subset)} unique taxid-species pairs\n\n")
+                
+                # Rename columns for output
+                subset.columns = ['taxid', 'species']
+                
+                # Write to output
+                subset.to_csv(output.taxid_list, sep='\t', index=False)
+                
+                log_file.write(f"✓ Extracted {len(subset)} unique taxids\n")
+                log_file.write("✓ Species names sanitized for filesystem safety\n\n")
+                log_file.write(f"First 10 entries:\n")
+                log_file.write(subset.head(10).to_string(index=False))
+                log_file.write("\n")
+                
+            except Exception as e:
+                log_file.write(f"ERROR: {str(e)}\n")
+                import traceback
+                log_file.write(traceback.format_exc())
+                raise
 
 
 # ============================================================================
@@ -116,7 +162,6 @@ rule download_genome_by_taxid:
         
         # Download with timeout - include everything
         timeout 300 datasets download virus genome taxon {params.taxid} \
-            --complete-only \
             --include genome,protein,cds,annotation \
             --filename {output.archive} \
             2>> {log} || {{
