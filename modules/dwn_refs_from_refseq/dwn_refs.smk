@@ -6,8 +6,6 @@
 import pandas as pd
 from pathlib import Path
 
-MODULE_DIR = Path(workflow.basedir) / "modules/dwn_refs_from_refseq"
-
 
 # ============================================================================
 # Checkpoint: Extract taxid + species list from DIAMOND hits
@@ -20,17 +18,23 @@ checkpoint extract_species_for_download:
     If multiple taxids (semicolon-separated), takes the first one.
     """
     input:
-        hits = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/hits.tsv"
+        hits = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/hits.tsv"
     output:
-        taxid_list = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/taxids_for_download.tsv"
+        taxid_list = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/taxids_for_download.tsv"
+    wildcard_constraints:
+        dataset = "[^/]+",
+        prefix = r"(assembly|co_assembly)/.+"
     log:
-        "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/extract_taxids.log"
+        "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/extract_taxids.log"
     run:
         import pandas as pd
         import re
         
         with open(log[0], 'w') as log_file:
             try:
+                log_file.write(f"Dataset: {wildcards.dataset}\n")
+                log_file.write(f"Prefix: {wildcards.prefix}\n\n")
+                
                 # Read DIAMOND hits
                 df = pd.read_csv(input.hits, sep='\t')
                 
@@ -132,19 +136,22 @@ rule download_genome_by_taxid:
     Folder name includes both taxid and species for clarity.
     """
     input:
-        taxid_list = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/taxids_for_download.tsv"
+        taxid_list = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/taxids_for_download.tsv"
     output:
-        genome = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/genomic.fna",
-        protein = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/protein.faa",
-        metadata = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/metadata.json",
-        archive = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/download.zip"
+        genome = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/genomic.fna",
+        protein = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/protein.faa",
+        metadata = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/metadata.json",
+        archive = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/download.zip"
     params:
         taxid = lambda w: w.taxid,
         species = lambda w: w.species.replace('_', ' '),
         species_safe = lambda w: w.species,
         outdir = lambda w, output: os.path.dirname(output.genome)
+    wildcard_constraints:
+        dataset = "[^/]+",
+        prefix = r"(assembly|co_assembly)/.+"
     log:
-        "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/download.log"
+        "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/download.log"
     threads: 1
     retries: 3
     resources:
@@ -155,7 +162,8 @@ rule download_genome_by_taxid:
         """
         mkdir -p {params.outdir}
         
-        echo "Downloading taxid {params.taxid} ({params.species})" > {log}
+        echo "Dataset: {wildcards.dataset}" > {log}
+        echo "Downloading taxid {params.taxid} ({params.species})" >> {log}
         
         # Small random delay to stagger requests (0-5 seconds)
         sleep $((RANDOM % 5))
@@ -214,6 +222,7 @@ rule download_genome_by_taxid:
                     
                     cat > {output.metadata} <<EOF
 {{
+  "dataset": "{wildcards.dataset}",
   "taxid": "{params.taxid}",
   "species": "{params.species}",
   "download_date": "$download_date",
@@ -240,6 +249,7 @@ EOF
                     touch {output.protein}
                     cat > {output.metadata} <<EOF
 {{
+  "dataset": "{wildcards.dataset}",
   "taxid": "{params.taxid}",
   "species": "{params.species}",
   "download_date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
@@ -255,6 +265,7 @@ EOF
                 touch {output.protein}
                 cat > {output.metadata} <<EOF
 {{
+  "dataset": "{wildcards.dataset}",
   "taxid": "{params.taxid}",
   "species": "{params.species}",
   "download_date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
@@ -271,6 +282,7 @@ EOF
             touch {output.archive}
             cat > {output.metadata} <<EOF
 {{
+  "dataset": "{wildcards.dataset}",
   "taxid": "{params.taxid}",
   "species": "{params.species}",
   "download_date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
@@ -294,10 +306,12 @@ rule download_all_refseq_genomes:
     Request this output to run the entire checkpoint workflow.
     """
     input:
-        taxid_list = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/taxids_for_download.tsv",
+        taxid_list = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/taxids_for_download.tsv",
         genomes = lambda wildcards: expand(
-            "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/genomic.fna",
+            "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/genomic.fna",
             zip,
+            fs_prefix=[wildcards.fs_prefix] * len(get_taxids_and_species_for_download(wildcards)['taxids']),
+            dataset=[wildcards.dataset] * len(get_taxids_and_species_for_download(wildcards)['taxids']),
             prefix=[wildcards.prefix] * len(get_taxids_and_species_for_download(wildcards)['taxids']),
             min_len=[wildcards.min_len] * len(get_taxids_and_species_for_download(wildcards)['taxids']),
             preset=[wildcards.preset] * len(get_taxids_and_species_for_download(wildcards)['taxids']),
@@ -307,8 +321,10 @@ rule download_all_refseq_genomes:
             species=get_taxids_and_species_for_download(wildcards)['species']
         ),
         metadata = lambda wildcards: expand(
-            "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/metadata.json",
+            "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/taxid_{taxid}__{species}/metadata.json",
             zip,
+            fs_prefix=[wildcards.fs_prefix] * len(get_taxids_and_species_for_download(wildcards)['taxids']),
+            dataset=[wildcards.dataset] * len(get_taxids_and_species_for_download(wildcards)['taxids']),
             prefix=[wildcards.prefix] * len(get_taxids_and_species_for_download(wildcards)['taxids']),
             min_len=[wildcards.min_len] * len(get_taxids_and_species_for_download(wildcards)['taxids']),
             preset=[wildcards.preset] * len(get_taxids_and_species_for_download(wildcards)['taxids']),
@@ -318,14 +334,18 @@ rule download_all_refseq_genomes:
             species=get_taxids_and_species_for_download(wildcards)['species']
         )
     output:
-        summary = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/download_summary.txt"
+        summary = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/download_summary.txt"
+    wildcard_constraints:
+        dataset = "[^/]+",
+        prefix = r"(assembly|co_assembly)/.+"
     log:
-        "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/download_summary.log"
+        "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/download_summary.log"
     shell:
         """
         set +e  # Don't exit on errors in this script
         
         echo "RefSeq Download Summary" > {output.summary}
+        echo "Dataset: {wildcards.dataset}" >> {output.summary}
         echo "======================" >> {output.summary}
         echo "" >> {output.summary}
         

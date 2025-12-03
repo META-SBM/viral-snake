@@ -9,7 +9,15 @@ with open(DIAMOND_FILTER_DIR / "presets.yaml") as f:
 
 
 def build_filter_command(wildcards):
-    """Build filter command from preset configuration"""
+    """
+    Build filter command from preset configuration.
+    
+    Args:
+        wildcards: Must contain filter_preset
+        
+    Returns:
+        str: Command-line arguments for filter_diamond.py
+    """
     preset = DIAMOND_FILTER_PRESETS[wildcards.filter_preset]
     
     cmd_parts = [
@@ -30,21 +38,27 @@ def build_filter_command(wildcards):
 
 
 rule filter_diamond:
-    """Filter DIAMOND results using predefined presets"""
+    """
+    Filter DIAMOND results using predefined presets.
+    Applies taxonomic and quality filters (pident, length, bitscore, domain).
+    """
     input:
-        hits = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/hits_with_taxonomy.tsv"
+        hits = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/hits_with_taxonomy.tsv"
     output:
-        hits = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/hits.tsv",
-        summary = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/summary.txt"
+        hits = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/hits.tsv",
+        summary = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/summary.txt"
     params:
-        filter_cmd = build_filter_command
+        filter_cmd = build_filter_command,
+        filter_script = DIAMOND_FILTER_DIR / "filter_diamond.py"
     wildcard_constraints:
-        filter_preset = "|".join(DIAMOND_FILTER_PRESETS.keys())
+        dataset = "[^/]+",
+        filter_preset = "|".join(DIAMOND_FILTER_PRESETS.keys()),
+        prefix = "(assembly|co_assembly)/.+"
     log:
-        "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/filter.log"
+        "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/filter.log"
     shell:
         """
-        python {DIAMOND_FILTER_DIR}/filter_diamond.py \
+        python {params.filter_script} \
             {input.hits} \
             {output.hits} \
             {params.filter_cmd} \
@@ -56,5 +70,3 @@ rule filter_diamond:
         echo "Input hits: $(wc -l < {input.hits})" >> {output.summary}
         echo "Output hits: $(wc -l < {output.hits})" >> {output.summary}
         """
-
-

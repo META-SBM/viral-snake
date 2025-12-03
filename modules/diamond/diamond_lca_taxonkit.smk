@@ -1,20 +1,28 @@
 rule calculate_contig_lca:
-    """Calculate LCA for each contig using taxonkit"""
+    """
+    Calculate Lowest Common Ancestor (LCA) for each contig using taxonkit.
+    Takes top N hits per contig and finds taxonomic consensus.
+    Outputs both simple (taxid only) and detailed (full lineage) formats.
+    """
     input:
-        hits = "{prefix}/hits_with_taxonomy.tsv"
+        hits = "{fs_prefix}/{dataset}/{prefix}/hits_with_taxonomy.tsv"
     output:
-        lca = "{prefix}/contig_lca.tsv",
-        lca_detailed = "{prefix}/contig_lca_detailed.tsv"
+        lca = "{fs_prefix}/{dataset}/{prefix}/contig_lca.tsv",
+        lca_detailed = "{fs_prefix}/{dataset}/{prefix}/contig_lca_detailed.tsv"
     params:
         taxdump = DATABASES['taxdump'],
         top_n = 10
+    wildcard_constraints:
+        dataset = "[^/]+",
+        prefix = "(assembly|co_assembly)/.+"
     log:
-        "{prefix}/lca.log"
+        "{fs_prefix}/{dataset}/{prefix}/lca.log"
     conda:
         "../../envs/taxonkit.yaml"
     shell:
         """
         echo "Starting LCA calculation" > {log}
+        echo "Dataset: {wildcards.dataset}" >> {log}
         
         # Extract contig ID, bitscore, and taxid
         tail -n +2 {input.hits} | \
