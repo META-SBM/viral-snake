@@ -13,7 +13,7 @@ if __name__ == "__main__":
                         help='output directory path', 
                         required=True)
     parser.add_argument('-coef', 
-                        elp='trashold for target is bitscore * coef', 
+                        help='trashold for target is bitscore * coef', 
                         type=float, 
                         required=True)
 
