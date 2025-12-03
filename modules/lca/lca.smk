@@ -2,7 +2,7 @@ import yaml
 from pathlib import Path
 
 # Load diamond filter presets
-MODULE_DIR = Path(workflow.basedir) / "modules/lca"
+LCA_MODULE_DIR = Path(workflow.basedir) / "modules/lca"
 
 rule lca:
     input: "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/hits_with_taxonomy.tsv"
@@ -18,5 +18,5 @@ rule lca:
         preset = "[^/]+"  # Explicit constraint: no slashes
 
     shell:
-         "python3 {MODULE_DIR}/lca.py -input {input} -output {output} -coef {params.coef}"
+         "python3 {LCA_MODULE_DIR }/lca.py -input {input} -output {output} -coef {params.coef}"
 

@@ -6,9 +6,16 @@ if __name__ == "__main__":
     from subprocess import run
 
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('-input', '--input_path', help='in path', required=True)
-    parser.add_argument('-output', '--output_path', help='out path', required=True)
-    parser.add_argument('-coef', help='coef val', type=float, required=True)
+    parser.add_argument('-input', '--input_path', 
+                        help='input directory path', 
+                        required=True)
+    parser.add_argument('-output', '--output_path', 
+                        help='output directory path', 
+                        required=True)
+    parser.add_argument('-coef', 
+                        elp='trashold for target is bitscore * coef', 
+                        type=float, 
+                        required=True)
 
 
     args = vars(parser.parse_args())
