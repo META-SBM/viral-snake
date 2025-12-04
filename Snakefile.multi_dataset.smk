@@ -156,15 +156,38 @@ qc_filter = DATASETS[dataset]['qc_filter']
 samples = DATASETS[dataset]['samples']
 min_len = DATASETS[dataset]['min_contig_length']
 assembler = DATASETS[dataset]['assemblers'][0]
-
 for s in samples:
     query_path = f'assembly/megahit/{qc_filter}/{s}/contigs_formatted_minlen_700'
-    target = f"{fs_prefix}/{dataset}/alignment/minimap2/{reference_path}/__contigs__/{query_path}/reference_coverage.tsv"
+    # query_path = f'assembly/megahit/{qc_filter}/{s}'
+    target = f"{fs_prefix}/{dataset}/alignment/minimap2_asm10/{reference_path}/__contigs__/{query_path}/alignments.paf"
+    minimap2_targets.append(target)
+
+    target = f"{fs_prefix}/{dataset}/alignment/minimap2_asm10/{reference_path}/__contigs__/{query_path}/reference_coverage.tsv"
+    minimap2_targets.append(target)
+
+
+reference_path = f"references/refseq/references.clean"
+dataset = 'VIROME4'
+fs_prefix = DATASETS[dataset]['fs_prefix']
+qc_filter = DATASETS[dataset]['qc_filter']
+samples = DATASETS[dataset]['samples']
+min_len = DATASETS[dataset]['min_contig_length']
+assembler = DATASETS[dataset]['assemblers'][0]
+for s in samples:
+    query_path = f'assembly/megahit/{qc_filter}/{s}/contigs_formatted_minlen_700'
+    # query_path = f'assembly/megahit/{qc_filter}/{s}'
+    target = f"{fs_prefix}/{dataset}/alignment/minimap2_asm10/{reference_path}/__contigs__/{query_path}/alignments.paf"
+    minimap2_targets.append(target)
+
+    target = f"{fs_prefix}/{dataset}/alignment/minimap2_asm10/{reference_path}/__contigs__/{query_path}/reference_coverage.tsv"
     minimap2_targets.append(target)
 
 target_list.append(
-    f"/mnt/mgx/DATASETS/INTERNAL/VIROME/RUN3/feature_tables/bracken-species-all/abundance_table.tsv"
+    f"/mnt/mgx/DATASETS/INTERNAL/VIROME/RUN3/feature_tables/bracken-species-all/taxonomy_table.tsv"
 )
+
+
+res = expand('/mnt/mgx/DATASETS/INTERNAL/VIROME/{dataset}/qc/read_stats/collections/ALL_TRIMMED_DISCARD_read_stats.tsv', dataset=DATASETS.keys())
 
 # DATASET = 'TEST'
 # target_list.append(expand(rules.megahit.output[0], 
@@ -178,4 +201,4 @@ target_list.append(
 # Main rule
 rule all:
     input:
-        target_list
+        minimap2_targets

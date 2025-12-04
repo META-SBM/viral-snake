@@ -69,22 +69,25 @@ rule minimap2_align_assembly:
     - co_assembly/all/megahit (co-assembly as reference)
     """
     input:
-        ref = get_reference_fasta_minimap2,  # INTELLIGENT!
+        ref = get_reference_fasta_minimap2,
         contigs = "{fs_prefix}/{dataset}/{query_path}/contigs.fa"
     output:
-        bam = "{fs_prefix}/{dataset}/alignment/minimap2/{reference_path}/__contigs__/{query_path}/alignments.sorted.bam",
-        bai = "{fs_prefix}/{dataset}/alignment/minimap2/{reference_path}/__contigs__/{query_path}/alignments.sorted.bam.bai"
+        bam = "{fs_prefix}/{dataset}/alignment/minimap2_{minimap2_preset}/{reference_path}/__contigs__/{query_path}/alignments.sorted.bam",
+        bai = "{fs_prefix}/{dataset}/alignment/minimap2_{minimap2_preset}/{reference_path}/__contigs__/{query_path}/alignments.sorted.bam.bai",
+        paf = "{fs_prefix}/{dataset}/alignment/minimap2_{minimap2_preset}/{reference_path}/__contigs__/{query_path}/alignments.paf"
+
     params:
-        preset = "asm5"
+        preset = "asm10"
     threads: THREADS.get('minimap2', 16)
     wildcard_constraints:
         dataset = "[^/]+",
+        minimap2_preset = "[^/]+",
         reference_path = ".+",
         query_path = r"(assembly|co_assembly)/.+"
     log:
-        "{fs_prefix}/{dataset}/alignment/minimap2/{reference_path}/__contigs__/{query_path}/alignment.log"
+        "{fs_prefix}/{dataset}/alignment/minimap2_{minimap2_preset}/{reference_path}/__contigs__/{query_path}/alignment.log"
     benchmark:
-        "{fs_prefix}/{dataset}/alignment/minimap2/{reference_path}/__contigs__/{query_path}/benchmark.txt"
+        "{fs_prefix}/{dataset}/alignment/minimap2_{minimap2_preset}/{reference_path}/__contigs__/{query_path}/benchmark.txt"
     conda:
         "../../envs/minimap2.yaml"
     shell:
@@ -98,9 +101,19 @@ rule minimap2_align_assembly:
         echo "" >> {log}
         
         mkdir -p $(dirname {output.bam})
+
+        # Create PAF (for identity calculations)
+        minimap2 \
+            -x asm10 \
+            -t {threads} \
+            {input.ref} \
+            {input.contigs} \
+            > {output.paf} \
+            2>> {log}
         
         minimap2 \
-            -ax {params.preset} \
+            -a \
+            -x asm10 \
             -t {threads} \
             {input.ref} \
             {input.contigs} \
@@ -123,17 +136,18 @@ rule minimap2_assembly_coverage:
     Calculate how much of the reference is covered by assembly contigs.
     """
     input:
-        bam = "{fs_prefix}/{dataset}/alignment/minimap2/{reference_path}/__contigs__/{query_path}/alignments.sorted.bam",
-        bai = "{fs_prefix}/{dataset}/alignment/minimap2/{reference_path}/__contigs__/{query_path}/alignments.sorted.bam.bai"
+        bam = "{fs_prefix}/{dataset}/alignment/minimap2_{minimap2_preset}/{reference_path}/__contigs__/{query_path}/alignments.sorted.bam",
+        bai = "{fs_prefix}/{dataset}/alignment/minimap2_{minimap2_preset}/{reference_path}/__contigs__/{query_path}/alignments.sorted.bam.bai"
     output:
-        coverage = "{fs_prefix}/{dataset}/alignment/minimap2/{reference_path}/__contigs__/{query_path}/reference_coverage.tsv"
+        coverage = "{fs_prefix}/{dataset}/alignment/minimap2_{minimap2_preset}/{reference_path}/__contigs__/{query_path}/reference_coverage.tsv"
     threads: 4
     wildcard_constraints:
         dataset = "[^/]+",
         reference_path = ".+",
+        minimap2_preset = "[^/]+",
         query_path = r"(assembly|co_assembly)/.+"
     log:
-        "{fs_prefix}/{dataset}/alignment/minimap2/{reference_path}/__contigs__/{query_path}/coverage.log"
+        "{fs_prefix}/{dataset}/alignment/minimap2_{minimap2_preset}/{reference_path}/__contigs__/{query_path}/coverage.log"
     conda:
         "../../envs/minimap2.yaml"
     shell:
@@ -144,4 +158,32 @@ rule minimap2_assembly_coverage:
         samtools coverage {input.bam} > {output.coverage} 2>> {log}
         
         echo "Coverage calculation complete!" >> {log}
+        """
+
+rule minimap2_assembly_flagstat:
+    """
+    Generate alignment statistics in TSV format for easy parsing.
+    """
+    input:
+        bam = "{fs_prefix}/{dataset}/alignment/minimap2_{minimap2_preset}/{reference_path}/__contigs__/{query_path}/alignments.sorted.bam",
+        bai = "{fs_prefix}/{dataset}/alignment/minimap2_{minimap2_preset}/{reference_path}/__contigs__/{query_path}/alignments.sorted.bam.bai"
+    output:
+        flagstat = "{fs_prefix}/{dataset}/alignment/minimap2_{minimap2_preset}/{reference_path}/__contigs__/{query_path}/alignments.flagstat.tsv"
+    threads: 4
+    wildcard_constraints:
+        dataset = "[^/]+",
+        reference_path = ".+",
+        minimap2_preset = "[^/]+",
+        query_path = r"(assembly|co_assembly)/.+"
+    log:
+        "{fs_prefix}/{dataset}/alignment/minimap2_{minimap2_preset}/{reference_path}/__contigs__/{query_path}/flagstat.log"
+    conda:
+        "../../envs/minimap2.yaml"
+    shell:
+        """
+        echo "Calculating alignment statistics (TSV format)" > {log}
+        
+        samtools flagstat -@ {threads} -O tsv {input.bam} > {output.flagstat} 2>> {log}
+        
+        echo "Flagstat complete!" >> {log}
         """
