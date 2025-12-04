@@ -7,7 +7,7 @@ rule fastqc:
         zip = "qc/fastqc/{qc_filter}/{sample}_R{read}_fastqc.zip"
     threads: 4
     conda:
-        "envs/qc.yaml"
+        "../../envs/qc.yaml"
     shell:
         """
         fastqc -t {threads} -o qc/fastqc/{wildcards.qc_filter}/ {input}

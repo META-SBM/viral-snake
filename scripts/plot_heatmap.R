@@ -23,7 +23,9 @@ option_list <- list(
   make_option(c("-p", "--prevalence"), type="numeric", default=0.1,
               help="Prevalence threshold (0-1) [default: 0.1 = 10%% of samples]"),
   make_option(c("-d", "--detection"), type="numeric", default=0,
-              help="Detection threshold (min reads) [default: 0]")
+              help="Detection threshold (min reads) [default: 0]"),
+  make_option(c("--domain"), type="character", default=NULL,
+              help="Filter by domain (e.g., 'Viruses', 'Bacteria', 'Archaea') [default: all domains]")
 )
 
 opt_parser <- OptionParser(option_list=option_list)
@@ -76,6 +78,30 @@ ps_filtered <- core(ps,
 cat(sprintf("Filtered phyloseq: %d taxa, %d samples\n", 
             ntaxa(ps_filtered), nsamples(ps_filtered)))
 
+# Filter by domain if specified
+if (!is.null(opt$domain)) {
+  cat(sprintf("Filtering by domain: %s\n", opt$domain))
+  
+  # Get taxonomy table
+  tax_table_temp <- as.data.frame(tax_table(ps_filtered))
+  
+  # Find taxa matching the domain (case-insensitive)
+  domain_match <- grepl(opt$domain, tax_table_temp$Domain, ignore.case = TRUE)
+  
+  if (sum(domain_match) == 0) {
+    stop(sprintf("No taxa found for domain '%s'! Available domains: %s", 
+                 opt$domain, 
+                 paste(unique(tax_table_temp$Domain), collapse=", ")), 
+         call.=FALSE)
+  }
+  
+  # Subset phyloseq object
+  taxa_to_keep <- rownames(tax_table_temp)[domain_match]
+  ps_filtered <- prune_taxa(taxa_to_keep, ps_filtered)
+  
+  cat(sprintf("After domain filter: %d taxa\n", ntaxa(ps_filtered)))
+}
+
 if (ntaxa(ps_filtered) == 0) {
   stop("No taxa passed filtering! Try reducing prevalence threshold.", call.=FALSE)
 }
@@ -92,8 +118,11 @@ tax_ids <- rownames(log_abundance)
 species_names <- tax_filtered$Species
 row_labels <- paste(tax_ids, species_names)
 
-# Get Domain information for annotation
+# Get Domain information for annotation (handle NAs)
 domains <- tax_filtered$Domain
+domains[is.na(domains)] <- "Unknown"  # Replace NA with "Unknown"
+domains <- as.character(domains)      # Ensure character vector
+domains <- trimws(domains)            # Remove whitespace
 
 # Create color palette for domains
 unique_domains <- unique(domains)
@@ -101,6 +130,11 @@ domain_colors <- setNames(
   rainbow(length(unique_domains), s=0.7, v=0.8),
   unique_domains
 )
+
+# Verify all domains have colors
+if (!all(domains %in% names(domain_colors))) {
+  stop("Some domains don't have corresponding colors!", call.=FALSE)
+}
 
 cat("Creating heatmap...\n")
 
