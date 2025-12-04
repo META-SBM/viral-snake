@@ -2,12 +2,20 @@ import yaml
 from pathlib import Path
 
 # Load cutadapt presets
-MODULE_DIR = Path(workflow.basedir) / "modules/qc/cutadapt"
-with open(MODULE_DIR / "cutadapt_presets.yaml") as f:
+CUTADAPT_MODULE_DIR = Path(workflow.basedir) / "modules/qc/cutadapt"
+with open(CUTADAPT_MODULE_DIR / "cutadapt_presets.yaml") as f:
     CUTADAPT_PRESETS = yaml.safe_load(f)['presets']
 
 def get_cutadapt_params(wildcards):
-    """Get all parameters for a cutadapt preset"""
+    """
+    Get all parameters for a cutadapt preset.
+    
+    Args:
+        wildcards: Snakemake wildcards object containing cutadapt_preset
+        
+    Returns:
+        dict: All parameters from the preset configuration
+    """
     preset = CUTADAPT_PRESETS[wildcards.cutadapt_preset]
     return {
         'adapter_r1': preset['adapter_r1'],
@@ -20,22 +28,29 @@ def get_cutadapt_params(wildcards):
     }
 
 rule cutadapt:
+    """
+    Trim adapters and perform quality filtering using cutadapt.
+    Uses preset configurations for different adapter/quality combinations.
+    Saves preset metadata for reproducibility.
+    """
     input:
-        r1 = "reads/{qc_filter}/{sample}_R1.fastq.gz",
-        r2 = "reads/{qc_filter}/{sample}_R2.fastq.gz"
+        r1 = "{fs_prefix}/{dataset}/reads/{qc_filter}/{sample}_R1.fastq.gz",
+        r2 = "{fs_prefix}/{dataset}/reads/{qc_filter}/{sample}_R2.fastq.gz"
     output:
-        r1 = "reads/{qc_filter}__cutadapt_{cutadapt_preset}/{sample}_R1.fastq.gz",
-        r2 = "reads/{qc_filter}__cutadapt_{cutadapt_preset}/{sample}_R2.fastq.gz",
-        preset_record = "reads/{qc_filter}__cutadapt_{cutadapt_preset}/{sample}.preset.yaml"
+        r1 = "{fs_prefix}/{dataset}/reads/{qc_filter}__cutadapt_{cutadapt_preset}/{sample}_R1.fastq.gz",
+        r2 = "{fs_prefix}/{dataset}/reads/{qc_filter}__cutadapt_{cutadapt_preset}/{sample}_R2.fastq.gz",
+        preset_record = "{fs_prefix}/{dataset}/reads/{qc_filter}__cutadapt_{cutadapt_preset}/{sample}.preset.yaml"
     params:
         cutadapt_params = get_cutadapt_params
     threads: THREADS['cutadapt']
     wildcard_constraints:
-        cutadapt_preset = "|".join(CUTADAPT_PRESETS.keys())  # Validate preset names
+        dataset = "[^/]+",
+        sample = "[^/]+",
+        cutadapt_preset = "|".join(CUTADAPT_PRESETS.keys())
     log:
-        "reads/{qc_filter}__cutadapt_{cutadapt_preset}/{sample}.log"
+        "{fs_prefix}/{dataset}/reads/{qc_filter}__cutadapt_{cutadapt_preset}/{sample}.log"
     benchmark:
-        "reads/{qc_filter}__cutadapt_{cutadapt_preset}/{sample}.benchmark.txt"
+        "{fs_prefix}/{dataset}/reads/{qc_filter}__cutadapt_{cutadapt_preset}/{sample}.benchmark.txt"
     conda:
         "cutadapt.yaml"
     shell:
@@ -52,12 +67,14 @@ parameters:
   discard_trimmed: {params.cutadapt_params[discard_trimmed]}
   pair_filter: "{params.cutadapt_params[pair_filter]}"
 run_info:
+  dataset: {wildcards.dataset}
   sample: {wildcards.sample}
   threads: {threads}
   timestamp: $(date -Iseconds)
 EOF
         
         echo "=== Running Cutadapt ===" | tee {log}
+        echo "Dataset: {wildcards.dataset}" | tee -a {log}
         echo "Input R1: {input.r1}" | tee -a {log}
         echo "Input R2: {input.r2}" | tee -a {log}
         echo "Output R1: {output.r1}" | tee -a {log}

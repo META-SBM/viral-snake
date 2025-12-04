@@ -1,151 +1,56 @@
-"""Commands for creating metadata and configuration files"""
+"""Assembly collection creation command"""
 
 import click
-from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
 from rich.prompt import Confirm
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.syntax import Syntax
 from pathlib import Path
 import yaml
 from datetime import datetime
 
-from ..utils import get_samples
-from .. import __version__
-
-console = Console()
-
-
-@click.group(name='create')
-def create_group():
-    """📝 Create metadata and configuration files"""
-    pass
-
-
-def display_yaml_preview(data, title="Preview"):
-    """Display YAML data with syntax highlighting"""
-    yaml_str = yaml.dump(data, default_flow_style=False, sort_keys=False)
-    syntax = Syntax(yaml_str, "yaml", theme="monokai", line_numbers=True)
-    console.print(Panel(syntax, title=f"📄 {title}", border_style="cyan"))
-
-
-def resolve_samples(dataset_path, qc_filter, samples, sample_file):
-    """Resolve sample list from various input methods
-    
-    Returns:
-        list: Resolved sample names
-        
-    Raises:
-        click.ClickException: If samples can't be resolved
-    """
-    reads_dir = dataset_path / 'reads' / qc_filter
-    
-    if not reads_dir.exists():
-        raise click.ClickException(
-            f"QC filter directory not found: {reads_dir}\n"
-            f"Available filters: {', '.join([d.name for d in (dataset_path / 'reads').iterdir() if d.is_dir()])}"
-        )
-    
-    # Handle different input methods
-    if 'ALL' in samples or 'all' in samples:
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
-        ) as progress:
-            progress.add_task(description="Discovering all samples...", total=None)
-            try:
-                sample_list = get_samples(reads_dir)
-            except FileNotFoundError as e:
-                raise click.ClickException(str(e))
-        
-        console.print(f"[green]✓[/green] Discovered {len(sample_list)} samples")
-        
-    elif sample_file:
-        console.print(f"[cyan]Reading samples from:[/cyan] {sample_file}")
-        with open(sample_file) as f:
-            sample_list = [line.strip() for line in f if line.strip() and not line.startswith('#')]
-        console.print(f"[green]✓[/green] Loaded {len(sample_list)} samples from file")
-        
-    else:
-        sample_list = list(samples)
-        console.print(f"[cyan]Using {len(sample_list)} specified samples[/cyan]")
-    
-    if not sample_list:
-        raise click.ClickException(
-            "No samples specified. Use:\n"
-            "  --samples ALL (discover all)\n"
-            "  --samples sample1 --samples sample2 (specific)\n"
-            "  --sample-file samples.txt (from file)"
-        )
-    
-    return sample_list
-
-
-def validate_samples_exist(reads_dir, sample_list, show_progress=True):
-    """Validate that all samples have R1 files
-    
-    Returns:
-        tuple: (valid_samples, missing_samples)
-    """
-    valid = []
-    missing = []
-    
-    if show_progress:
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
-        ) as progress:
-            task = progress.add_task(
-                description=f"Validating {len(sample_list)} samples...", 
-                total=len(sample_list)
-            )
-            
-            for sample in sample_list:
-                r1 = reads_dir / f"{sample}_R1.fastq.gz"
-                if r1.exists():
-                    valid.append(sample)
-                else:
-                    missing.append(sample)
-                progress.advance(task)
-    else:
-        for sample in sample_list:
-            r1 = reads_dir / f"{sample}_R1.fastq.gz"
-            if r1.exists():
-                valid.append(sample)
-            else:
-                missing.append(sample)
-    
-    return valid, missing
+from . import (
+    console,
+    create_group,
+    validate_collection_name,
+    resolve_samples,
+    apply_exclusions,
+    validate_samples_exist,
+    display_yaml_preview
+)
+from ... import __version__
 
 
 @create_group.command(name='assembly-collection')
 @click.argument('dataset_root', type=click.Path(exists=True))
 @click.option('--name', '-n', required=True, help='Assembly collection name')
-@click.option('--description', '-d', help='Collection description')
+@click.option('--description', '-d', help='Collection description (optional)')
 # Individual assemblies
-@click.option('--assembler', default='megahit', type=click.Choice(['megahit', 'metaspades']),
-              help='Assembler to use')
+@click.option('--assembler', default='megahit', 
+              type=click.Choice(['megahit', 'metaspades']),
+              help='Assembler to use (default: megahit)')
 @click.option('--qc-filter', '-q', help='QC filter for individual assemblies')
-@click.option('--min-len', type=int, default=800, help='Minimum contig length')
+@click.option('--min-len', type=int, default=800, 
+              help='Minimum contig length (default: 800)')
 @click.option('--samples', '-s', multiple=True, 
               help='Sample names (use ALL for all samples)')
 @click.option('--sample-file', type=click.Path(exists=True), 
               help='File with sample names (one per line)')
+@click.option('--exclude', '-x', multiple=True,
+              help='Samples to exclude')
+@click.option('--exclude-file', type=click.Path(exists=True),
+              help='File with samples to exclude')
 # Co-assemblies
 @click.option('--co-assembly-collections', '-c', multiple=True, 
               help='Sample collection names for co-assemblies')
 # Behavior
-@click.option('--force', '-f', is_flag=True, help='Overwrite existing file without asking')
-@click.option('--dry-run', is_flag=True, help='Show what would be created without writing file')
-@click.option('--no-validate', is_flag=True, help='Skip validation of sample existence')
-@click.option('--output', '-o', type=click.Path(), help='Custom output path')
+@click.option('--force', '-f', is_flag=True, help='Overwrite existing')
+@click.option('--dry-run', is_flag=True, help='Preview without creating')
+@click.option('--no-validate', is_flag=True, help='Skip validation')
 def create_assembly_collection(dataset_root, name, description, assembler, 
                                qc_filter, min_len, samples, sample_file,
+                               exclude, exclude_file,
                                co_assembly_collections, force, dry_run, 
-                               no_validate, output):
+                               no_validate):
     """Create an assembly collection configuration file
     
     The metadata file contains FULLY RESOLVED sample lists - no wildcards.
@@ -165,27 +70,26 @@ def create_assembly_collection(dataset_root, name, description, assembler,
     # Specific samples with co-assemblies
     viral-snake create assembly-collection /path/to/dataset \\
         --name complete_dataset \\
+        --description "All tick data" \\
         --qc-filter raw \\
-        --samples sample1 --samples sample2 \\
+        --samples ALL \\
         --co-assembly-collections tick_pools forest_pools
     
     \b
-    # From file (samples.txt contains one sample per line)
+    # Just co-assemblies (no individual)
     viral-snake create assembly-collection /path/to/dataset \\
-        --name selected_samples \\
-        --qc-filter raw__cutadapt_mgi_virome \\
-        --sample-file samples.txt
-    
-    \b
-    # Dry run to preview before creating
-    viral-snake create assembly-collection /path/to/dataset \\
-        --name test_collection \\
-        --qc-filter raw \\
-        --samples ALL \\
-        --dry-run
+        --name coassemblies_only \\
+        --co-assembly-collections tick_pools forest_pools
     """
     
     dataset_path = Path(dataset_root)
+    
+    # Validate collection name
+    try:
+        validate_collection_name(name)
+    except click.ClickException as e:
+        console.print(f"[bold red]✗ Error:[/bold red] {e}")
+        raise click.Abort()
     
     # Print header
     console.print()
@@ -213,6 +117,21 @@ def create_assembly_collection(dataset_root, name, description, assembler,
         try:
             # Resolve samples
             sample_list = resolve_samples(dataset_path, qc_filter, samples, sample_file)
+            initial_count = len(sample_list)
+            
+            # Apply exclusions
+            if exclude or exclude_file:
+                sample_list, excluded_samples, not_found = apply_exclusions(
+                    sample_list, exclude, exclude_file
+                )
+                
+                if not sample_list:
+                    raise click.ClickException(
+                        "No samples remaining after exclusions!\n"
+                        f"Started with {initial_count}, excluded {len(excluded_samples)}"
+                    )
+            else:
+                excluded_samples = []
             
             # Validate samples exist (unless skipped)
             if not no_validate:
@@ -221,7 +140,7 @@ def create_assembly_collection(dataset_root, name, description, assembler,
                 
                 if missing_samples:
                     console.print(f"[yellow]⚠ Warning:[/yellow] {len(missing_samples)} samples not found:")
-                    for s in missing_samples[:5]:  # Show first 5
+                    for s in missing_samples[:5]:
                         console.print(f"    [dim]• {s}[/dim]")
                     if len(missing_samples) > 5:
                         console.print(f"    [dim]... and {len(missing_samples) - 5} more[/dim]")
@@ -238,7 +157,7 @@ def create_assembly_collection(dataset_root, name, description, assembler,
                 'assembler': assembler,
                 'qc_filter': qc_filter,
                 'min_len': min_len,
-                'samples': sorted(sample_list)  # Sort for consistency
+                'samples': sorted(sample_list)
             })
             stats['total_individual_assemblies'] = len(sample_list)
             
@@ -307,12 +226,16 @@ def create_assembly_collection(dataset_root, name, description, assembler,
     # ========================================================================
     collection = {
         'name': name,
-        'description': description or f'Assembly collection: {name}',
-        'created': datetime.now().isoformat(),
-        'created_by': f'viral-snake v{__version__}',
         'sources': sources,
         'stats': stats
     }
+    
+    # Add optional fields
+    if description:
+        collection['description'] = description
+    
+    collection['created'] = datetime.now().isoformat()
+    collection['created_by'] = f'viral-snake v{__version__}'
     
     # ========================================================================
     # Show preview
@@ -322,12 +245,9 @@ def create_assembly_collection(dataset_root, name, description, assembler,
     console.print()
     
     # Determine output path
-    if output:
-        config_file = Path(output)
-    else:
-        config_dir = dataset_path / 'config' / 'assembly_collections'
-        config_dir.mkdir(parents=True, exist_ok=True)
-        config_file = config_dir / f'{name}.yaml'
+    config_dir = dataset_path / 'config' / 'assembly_collections'
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_file = config_dir / f'{name}.yaml'
     
     # ========================================================================
     # Dry run exit
@@ -349,26 +269,26 @@ def create_assembly_collection(dataset_root, name, description, assembler,
     # ========================================================================
     # Write file
     # ========================================================================
-    config_file.parent.mkdir(parents=True, exist_ok=True)
     with open(config_file, 'w') as f:
         yaml.dump(collection, f, default_flow_style=False, sort_keys=False)
     
     # ========================================================================
     # Success summary
     # ========================================================================
-    console.print(Panel.fit(
+    summary_text = (
         f"[bold green]✓ Assembly Collection Created[/bold green]\n\n"
         f"[cyan]File:[/cyan] {config_file}\n"
         f"[cyan]Name:[/cyan] {name}\n"
         f"[cyan]Individual assemblies:[/cyan] {stats['total_individual_assemblies']}\n"
-        f"[cyan]Co-assemblies:[/cyan] {stats['total_co_assemblies']}",
-        border_style="green"
-    ))
+        f"[cyan]Co-assemblies:[/cyan] {stats['total_co_assemblies']}"
+    )
+    
+    console.print(Panel.fit(summary_text, border_style="green"))
     
     # ========================================================================
     # Next steps
     # ========================================================================
     console.print("\n[bold]Next steps:[/bold]")
-    console.print(f"  1. Validate: [cyan]viral-snake validate dataset {dataset_root}[/cyan]")
-    console.print(f"  2. Run DIAMOND: [cyan]viral-snake run diamond-batch {name}[/cyan]")
+    console.print(f"  1. Prepare collection: [cyan]snakemake assembly_collection/{name}/contigs.fa[/cyan]")
+    console.print(f"  2. Run DIAMOND batch: [cyan]snakemake assembly_collection/{name}/diamond_faster/NR/hits.txt[/cyan]")
     console.print()
