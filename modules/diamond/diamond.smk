@@ -17,6 +17,7 @@ def get_diamond_params(wildcards):
         'evalue': preset['evalue']
     }
 
+
 rule diamond_blastx_unified:
     """DIAMOND BLASTX for both individual assemblies and co-assemblies"""
     input:
@@ -35,6 +36,8 @@ rule diamond_blastx_unified:
         "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/diamond.benchmark.txt"
     conda:
         "../../envs/diamond.yaml"
+    wildcard_constraints:
+        preset = "[^/]+"  # Explicit constraint: no slashes
     shell:
         """
         echo "=== Running DIAMOND BLASTX ===" | tee {log}
@@ -74,6 +77,8 @@ rule add_taxonomy_to_diamond:
         taxdump = DATABASES['taxdump']
     conda:
         "../../envs/taxonkit.yaml"
+    wildcard_constraints:
+        preset = "[^/]+"  # Explicit constraint: no slashes
     shell:
         """
         # Extract unique tax IDs from column 14, handling multiple taxids separated by semicolons

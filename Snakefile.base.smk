@@ -71,4 +71,5 @@ include: "modules/diamond/diamond_lca_taxonkit.smk"
 include: "modules/minimap2/minimap2.smk"
 include: "modules/mmseqs2/cluster.smk"
 
+include: "modules/lca/lca.smk"
 include: "modules/dwn_refs_from_refseq/dwn_refs.smk"
