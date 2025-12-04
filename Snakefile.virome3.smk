@@ -17,6 +17,7 @@ include: "Snakefile.base.smk"
 QC_FILTER = "raw__cutadapt_no_mgi_min_len_90"
 QC_FILTER = "raw__cutadapt_mgi_virome"
 ASSEMBLERS = ["megahit"]
+MIN_CONTIG_LENGTH = 300
 MIN_CONTIG_LENGTH = 700
 
 # ============================================================================
@@ -84,6 +85,12 @@ rule all:
     #            collection=['ALL_SAMPLES_MERGED'], 
     #            min_len=MIN_CONTIG_LENGTH),
         
+        # Filtered DIAMOND results
+        expand("assembly/{assembler}/raw/{sample}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/LCA.tsv",
+               assembler=ASSEMBLERS,
+               collection=COLLECTIONS,
+               min_len=MIN_CONTIG_LENGTH,
+               sample=SAMPLES),
        #  # Filtered DIAMOND results
        #  expand("assembly/{assembler}/raw/{sample}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/{filter_preset}/hits.tsv",
        #         assembler=ASSEMBLERS,
