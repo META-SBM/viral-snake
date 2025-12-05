@@ -8,24 +8,88 @@ from rich.panel import Panel
 from rich import box
 from rich.columns import Columns
 
+# ============================================================================
+# CONFIGURATION - EDIT THESE FOR EACH RUN
+# ============================================================================
+
 # Run identifier
-RUN_NAME = "V350375304"
+RUN_NAME = "V350375302"
+
+# Specify which lanes to merge (only these will be checked and merged)
+# Examples:
+#   ["L02", "L03"]           # Only lanes 2 and 3
+#   ["L01", "L02"]           # Only lanes 1 and 2
+#   ["L01", "L02", "L03", "L04"]  # All four lanes
+LANES_TO_MERGE = ["L02", "L03"]
 
 # Base paths
-BASE_DIR = f"/mnt/mgx/DATASETS/INTERNAL/VIROME/VIROME5/{RUN_NAME}"
-L01_DIR = os.path.join(BASE_DIR, "L01")
-L02_DIR = os.path.join(BASE_DIR, "L02")
-L03_DIR = os.path.join(BASE_DIR, "L03")
-L04_DIR = os.path.join(BASE_DIR, "L04")
+BASE_DIR = f"/mnt/mgx/DATASETS/INTERNAL/VIROME/VIROME6/{RUN_NAME}"
 MERGED_DIR = os.path.join(BASE_DIR, "MERGED_LANES")
 
-# Auto-detect sample IDs from L01 files
-L01_files = glob.glob(os.path.join(L01_DIR, f"{RUN_NAME}_L01_*_1.fq.gz"))
-ALL_SAMPLES = [os.path.basename(f).replace(f"{RUN_NAME}_L01_", "").replace("_1.fq.gz", "") for f in L01_files]
+# Optional: Path to sample sheet (set to None to auto-detect from files)
+# SAMPLE_SHEET = "/path/to/your/sample_sheet.csv"
+SAMPLE_SHEET = None
 
-# Validate all lane files exist
-lanes = ['L01', 'L02', 'L03', 'L04']
-lane_dirs = [L01_DIR, L02_DIR, L03_DIR, L04_DIR]
+# ============================================================================
+# AUTO-DETECTION AND VALIDATION
+# ============================================================================
+
+# Build lane directory paths based on configuration
+LANE_DIRS = {lane: os.path.join(BASE_DIR, lane) for lane in LANES_TO_MERGE}
+
+# Verify lane directories exist
+missing_lane_dirs = [lane for lane, path in LANE_DIRS.items() if not os.path.exists(path)]
+if missing_lane_dirs:
+    console = Console(stderr=True)
+    console.print(Panel(
+        f"[bold red]ERROR: Lane directories not found: {', '.join(missing_lane_dirs)}[/bold red]\n"
+        f"Expected paths: {[LANE_DIRS[l] for l in missing_lane_dirs]}",
+        title="Configuration Error",
+        border_style="red bold",
+        box=box.DOUBLE
+    ))
+    sys.exit(1)
+
+# Auto-detect sample IDs from first lane directory
+first_lane = LANES_TO_MERGE[0]
+first_lane_dir = LANE_DIRS[first_lane]
+pattern = os.path.join(first_lane_dir, f"{RUN_NAME}_{first_lane}_*_1.fq.gz")
+first_lane_files = glob.glob(pattern)
+
+if not first_lane_files:
+    console = Console(stderr=True)
+    console.print(Panel(
+        f"[bold red]ERROR: No files found in {first_lane} directory[/bold red]\n"
+        f"Pattern searched: {pattern}",
+        border_style="red bold",
+        box=box.DOUBLE
+    ))
+    sys.exit(1)
+
+ALL_SAMPLES = [
+    os.path.basename(f).replace(f"{RUN_NAME}_{first_lane}_", "").replace("_1.fq.gz", "")
+    for f in first_lane_files
+]
+
+# Optional: Filter by sample sheet
+if SAMPLE_SHEET and os.path.exists(SAMPLE_SHEET):
+    import pandas as pd
+    console = Console(stderr=True)
+    console.print(f"[cyan]Reading sample sheet: {SAMPLE_SHEET}[/cyan]")
+    df = pd.read_csv(SAMPLE_SHEET)
+    # Assuming 'ID' column contains sample names
+    expected_samples = set(df['ID'].dropna().unique())
+    console.print(f"[cyan]Expected {len(expected_samples)} samples from sheet[/cyan]")
+    
+    # Check for samples in files but not in sheet
+    unexpected = set(ALL_SAMPLES) - expected_samples
+    if unexpected:
+        console.print(f"[yellow]Warning: {len(unexpected)} samples in files but not in sheet: {unexpected}[/yellow]")
+    
+    # Filter to only expected samples
+    ALL_SAMPLES = [s for s in ALL_SAMPLES if s in expected_samples]
+
+# Validate all required lane files exist
 issues_by_sample = defaultdict(lambda: {'R1': {'present': [], 'missing': []}, 'R2': {'present': [], 'missing': []}})
 
 def get_file_size(filepath):
@@ -42,7 +106,8 @@ for sample in ALL_SAMPLES:
     has_missing = False
     for read in [1, 2]:
         read_key = f'R{read}'
-        for lane, lane_dir in zip(lanes, lane_dirs):
+        for lane in LANES_TO_MERGE:
+            lane_dir = LANE_DIRS[lane]
             filepath = os.path.join(lane_dir, f"{RUN_NAME}_{lane}_{sample}_{read}.fq.gz")
             if os.path.exists(filepath):
                 issues_by_sample[sample][read_key]['present'].append((filepath, get_file_size(filepath)))
@@ -60,19 +125,33 @@ for sample in ALL_SAMPLES:
 # Filter to only include samples with all files present
 SAMPLES = [s for s in ALL_SAMPLES if s not in samples_with_missing]
 
+# ============================================================================
+# REPORTING
+# ============================================================================
+
+console = Console(stderr=True)
+console.print()
+console.print(Panel(
+    f"[bold cyan]Run: {RUN_NAME}[/bold cyan]\n"
+    f"[bold cyan]Merging lanes: {', '.join(LANES_TO_MERGE)}[/bold cyan]\n"
+    f"[dim]Detected {len(ALL_SAMPLES)} samples from {first_lane}[/dim]",
+    title="Configuration",
+    border_style="cyan",
+    box=box.ROUNDED
+))
+console.print()
+
 if issues_by_sample:
-    console = Console(stderr=True)
-    console.print()
-    console.print(Panel("[bold yellow]Warning: Some samples have missing lane files and will be skipped![/bold yellow]", 
-                        title="WARNING", 
-                        border_style="yellow bold",
-                        box=box.DOUBLE))
+    console.print(Panel(
+        "[bold yellow]Warning: Some samples have missing lane files and will be skipped![/bold yellow]", 
+        title="WARNING", 
+        border_style="yellow bold",
+        box=box.DOUBLE
+    ))
     console.print()
     
     total_missing = 0
     for sample in sorted(issues_by_sample.keys()):
-        
-        # Create tables for R1 and R2
         tables_output = []
         for read in ['R1', 'R2']:
             table = Table(show_header=True, box=box.ROUNDED, title_style="bold yellow")
@@ -91,7 +170,6 @@ if issues_by_sample:
             
             tables_output.append(Panel(table, title=f"[bold yellow]{read}[/bold yellow]", border_style="yellow"))
         
-        # Combine both tables in a panel
         console.print(Panel(
             Columns(tables_output, equal=True, expand=True),
             title=f"[bold cyan]Sample: {sample} (SKIPPED)[/bold cyan]",
@@ -107,26 +185,42 @@ if issues_by_sample:
         box=box.DOUBLE_EDGE
     ))
     console.print()
+else:
+    console.print(Panel(
+        f"[bold green]✓ All {len(SAMPLES)} samples have complete data in all {len(LANES_TO_MERGE)} lanes[/bold green]",
+        border_style="green",
+        box=box.ROUNDED
+    ))
+    console.print()
 
 if not SAMPLES:
-    console = Console(stderr=True)
-    console.print(Panel("[bold red]ERROR: No samples with complete data found![/bold red]", 
-                        border_style="red bold",
-                        box=box.DOUBLE))
+    console.print(Panel(
+        "[bold red]ERROR: No samples with complete data found![/bold red]", 
+        border_style="red bold",
+        box=box.DOUBLE
+    ))
     sys.exit(1)
+
+# ============================================================================
+# SNAKEMAKE RULES
+# ============================================================================
 
 rule all:
     input:
         expand(os.path.join(MERGED_DIR, f"{RUN_NAME}_{{sample}}_{{read}}.fq.gz"), 
                sample=SAMPLES, read=[1, 2])
 
+def get_lane_inputs(wildcards):
+    """Dynamically generate input files based on configured lanes"""
+    return [
+        os.path.join(LANE_DIRS[lane], f"{RUN_NAME}_{lane}_{wildcards.sample}_{wildcards.read}.fq.gz")
+        for lane in LANES_TO_MERGE
+    ]
+
 rule merge_lanes:
     input:
-        l01 = os.path.join(L01_DIR, f"{RUN_NAME}_L01_{{sample}}_{{read}}.fq.gz"),
-        l02 = os.path.join(L02_DIR, f"{RUN_NAME}_L02_{{sample}}_{{read}}.fq.gz"),
-        l03 = os.path.join(L03_DIR, f"{RUN_NAME}_L03_{{sample}}_{{read}}.fq.gz"),
-        l04 = os.path.join(L04_DIR, f"{RUN_NAME}_L04_{{sample}}_{{read}}.fq.gz")
+        get_lane_inputs
     output:
         os.path.join(MERGED_DIR, f"{RUN_NAME}_{{sample}}_{{read}}.fq.gz")
     shell:
-        "cat {input.l01} {input.l02} {input.l03} {input.l04} > {output}"
+        "cat {input} > {output}"

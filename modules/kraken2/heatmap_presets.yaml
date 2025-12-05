@@ -1,0 +1,23 @@
+heatmaps:
+  viral_core:
+    prevalence: 0.5
+    detection: 10
+    domain: "Viruses"
+    
+  viral_all:
+    prevalence: 0.001
+    detection: 1
+    domain: "Viruses"
+    
+  bacterial_prevalent:
+    prevalence: 0.3
+    detection: 10
+    domain: "Bacteria"
+    
+  all_taxa_0.1:
+    prevalence: 0.1
+    detection: 2
+    
+  all_taxa:
+    prevalence: 0.0000001
+    detection: 1

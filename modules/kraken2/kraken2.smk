@@ -1,3 +1,11 @@
+from pathlib import Path
+
+# Define script directory
+KRAKEN2_MODULE_DIR = Path(workflow.basedir) / "modules/kraken2"
+# Load heatmap presets
+with open(KRAKEN2_MODULE_DIR / "heatmap_presets.yaml") as f:
+    HEATMAP_PRESETS = yaml.safe_load(f)['heatmaps']
+
 rule kraken2_classify:
     """
     Classify reads taxonomically using Kraken2.
@@ -144,7 +152,7 @@ rule build_bracken_abundance_table:
     params:
         metric = get_abundance_metric,
         input_args = lambda wildcards, input: ' '.join([f'-i {f}' for f in input.files]),
-        script = "~/MGX/viral-snake/scripts/build_abundance_table.py"
+        script = KRAKEN2_MODULE_DIR / "build_abundance_table.py" 
     wildcard_constraints:
         dataset = "[^/]+"
     log:
@@ -218,4 +226,91 @@ rule create_taxonomy_table:
         rm {output.taxonomy}.tmp.*
         
         echo "Taxonomy table complete" >> {log}
+        """
+
+def build_heatmap_command(wildcards):
+    """
+    Build heatmap command from preset configuration.
+    
+    Args:
+        wildcards: Must contain heatmap_preset
+        
+    Returns:
+        str: Command-line arguments for create_heatmap.R
+    """
+    preset = HEATMAP_PRESETS[wildcards.heatmap_preset]
+    
+    cmd_parts = [
+        f"--prevalence {preset.get('prevalence', 0.1)}",
+        f"--detection {preset.get('detection', 0)}",
+    ]
+    
+    if 'domain' in preset:
+        cmd_parts.append(f"--domain '{preset['domain']}'")
+    
+    return " ".join(cmd_parts)
+
+def get_phyloseq_metadata_arg(wildcards):
+    """Check if metadata file exists and return argument."""
+    metadata_file = f"{wildcards.fs_prefix}/{wildcards.dataset}/feature_tables/bracken-{wildcards.feature_table_id}/metadata.tsv"
+    if Path(metadata_file).exists():
+        return f"-m {metadata_file}"
+    return ""
+
+
+rule create_phyloseq:
+    """
+    Create phyloseq object from abundance and taxonomy tables.
+    Optionally includes sample metadata if available.
+    """
+    input:
+        abundance = "{fs_prefix}/{dataset}/feature_tables/bracken-{feature_table_id}/abundance_table.tsv",
+        taxonomy = "{fs_prefix}/{dataset}/feature_tables/bracken-{feature_table_id}/taxonomy_table.tsv"
+    output:
+        phyloseq = "{fs_prefix}/{dataset}/feature_tables/bracken-{feature_table_id}/phyloseq.rds"
+    params:
+        script = KRAKEN2_MODULE_DIR / "create_phyloseq.R",
+        metadata_arg = get_phyloseq_metadata_arg
+    wildcard_constraints:
+        dataset = "[^/]+"
+    log:
+        "{fs_prefix}/{dataset}/feature_tables/bracken-{feature_table_id}/phyloseq.log"
+    conda:
+        "../../envs/phyloseq.yaml"
+    shell:
+        """
+        Rscript {params.script} \
+            -a {input.abundance} \
+            -t {input.taxonomy} \
+            {params.metadata_arg} \
+            -o {output.phyloseq} \
+            2>&1 | tee {log}
+        """
+
+rule create_abundance_heatmap:
+    """
+    Create filtered abundance heatmap from phyloseq object.
+    Filters taxa by prevalence and creates log-transformed heatmap using presets.
+    """
+    input:
+        phyloseq = "{fs_prefix}/{dataset}/feature_tables/bracken-{feature_table_id}/phyloseq.rds"
+    output:
+        heatmap = "{fs_prefix}/{dataset}/feature_tables/bracken-{feature_table_id}/heatmap_{heatmap_preset}.pdf"
+    params:
+        script = KRAKEN2_MODULE_DIR / "plot_heatmap.R",
+        heatmap_cmd = build_heatmap_command
+    wildcard_constraints:
+        dataset = "[^/]+",
+        heatmap_preset = "|".join(HEATMAP_PRESETS.keys())
+    log:
+        "{fs_prefix}/{dataset}/feature_tables/bracken-{feature_table_id}/heatmap_{heatmap_preset}.log"
+    conda:
+        "../../envs/phyloseq.yaml"
+    shell:
+        """
+        Rscript {params.script} \
+            -p {input.phyloseq} \
+            -o {output.heatmap} \
+            {params.heatmap_cmd} \
+            2>&1 | tee {log}
         """
