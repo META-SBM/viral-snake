@@ -66,10 +66,10 @@ include: "modules/blast/blast.smk"
 include: "modules/diamond/diamond.smk"
 include: "modules/diamond/filter/diamond_filter.smk"
 include: "modules/diamond/diamond_lca_taxonkit.smk"
+include: "modules/diamond/lca/lca.smk"
 
 # Mapping and clustering
 include: "modules/minimap2/minimap2.smk"
 include: "modules/mmseqs2/cluster.smk"
 
-include: "modules/lca/lca.smk"
 include: "modules/dwn_refs_from_refseq/dwn_refs.smk"

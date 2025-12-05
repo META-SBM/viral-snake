@@ -1,0 +1,11 @@
+name: phyloseq
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - r-base>=4.0
+  - bioconductor-phyloseq
+  - bioconductor-microbiome
+  - bioconductor-complexheatmap
+  - r-optparse
+  - r-circlize

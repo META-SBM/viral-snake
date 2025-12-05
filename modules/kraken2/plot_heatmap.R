@@ -14,13 +14,11 @@ suppressPackageStartupMessages({
 
 # Parse command line arguments
 option_list <- list(
-  make_option(c("-a", "--abundance-table"), type="character",
-              help="Abundance table TSV file"),
-  make_option(c("-t", "--taxonomy-table"), type="character",
-              help="Taxonomy table TSV file"),
+  make_option(c("-p", "--phyloseq"), type="character",
+              help="Phyloseq RDS file"),  # CHANGED: single input now
   make_option(c("-o", "--output"), type="character",
               help="Output PDF file"),
-  make_option(c("-p", "--prevalence"), type="numeric", default=0.1,
+  make_option(c("--prevalence"), type="numeric", default=0.1,
               help="Prevalence threshold (0-1) [default: 0.1 = 10%% of samples]"),
   make_option(c("-d", "--detection"), type="numeric", default=0,
               help="Detection threshold (min reads) [default: 0]"),
@@ -32,37 +30,15 @@ opt_parser <- OptionParser(option_list=option_list)
 opt <- parse_args(opt_parser)
 
 # Validate inputs
-if (is.null(opt$`abundance-table`) || is.null(opt$`taxonomy-table`) || is.null(opt$output)) {
+if (is.null(opt$phyloseq) || is.null(opt$output)) {  # CHANGED
   print_help(opt_parser)
   stop("Missing required arguments", call.=FALSE)
 }
 
-cat("Loading data...\n")
+cat("Loading phyloseq object...\n")
 
-# Load abundance table (OTU table)
-otu_data <- read.table(opt$`abundance-table`, 
-                       header=TRUE, 
-                       sep="\t", 
-                       row.names=1, 
-                       check.names=FALSE,
-                       quote="",
-                       comment.char="")
-otu_mat <- as.matrix(otu_data)
-
-# Load taxonomy table
-tax_data <- read.table(opt$`taxonomy-table`, 
-                       header=TRUE, 
-                       sep="\t", 
-                       row.names=1, 
-                       check.names=FALSE,
-                       quote="",
-                       comment.char="")
-tax_mat <- as.matrix(tax_data)
-
-# Create phyloseq object
-OTU <- otu_table(otu_mat, taxa_are_rows=TRUE)
-TAX <- tax_table(tax_mat)
-ps <- phyloseq(OTU, TAX)
+# Load phyloseq object
+ps <- readRDS(opt$phyloseq)  # CHANGED: just load it
 
 cat(sprintf("Initial phyloseq: %d taxa, %d samples\n", 
             ntaxa(ps), nsamples(ps)))
