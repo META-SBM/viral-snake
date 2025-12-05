@@ -13,7 +13,7 @@ include: "Snakefile.base.smk"
 
 # Pipeline parameters
 QC_FILTER = "raw__cutadapt_mgi_virome4"
-QC_FILTER = "raw__barcode_rescue"
+# QC_FILTER = "raw__barcode_rescue"
 ASSEMBLERS = ["megahit"]
 MIN_CONTIG_LENGTH = 700
 
@@ -26,14 +26,14 @@ MIN_CONTIG_LENGTH = 700
 ADAPTER_R1_BASE = "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC"
 ADAPTER_R2_BASE = "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
 
-# Load data
-SAMPLE_SHEET = pd.read_csv("config/sample_sheet.tsv", sep='\t')
-BARCODES = pd.read_csv("config/UDI_barcodes_reverse.csv", header=None)
-BARCODES.columns = ['barcode_num', 'index']
+# # Load data
+# SAMPLE_SHEET = pd.read_csv("config/sample_sheet.tsv", sep='\t')
+# BARCODES = pd.read_csv("config/UDI_barcodes_reverse.csv", header=None)
+# BARCODES.columns = ['barcode_num', 'index']
 
-# Create mappings
-SAMPLE_TO_BARCODE_NUM = dict(zip(SAMPLE_SHEET['ID'], SAMPLE_SHEET['Sample_ID']))
-BARCODE_NUM_TO_INDEX = dict(zip(BARCODES['barcode_num'], BARCODES['index']))
+# # Create mappings
+# SAMPLE_TO_BARCODE_NUM = dict(zip(SAMPLE_SHEET['ID'], SAMPLE_SHEET['Sample_ID']))
+# BARCODE_NUM_TO_INDEX = dict(zip(BARCODES['barcode_num'], BARCODES['index']))
 
 # ============================================================================
 # Discovery
@@ -71,33 +71,41 @@ rule all:
         # QC reports
         expand("qc/read_stats/{qc_filter}/{sample}_read_counts.tsv",
                qc_filter=['raw', QC_FILTER], sample=SAMPLES),
-        expand('qc/read_stats/collections/ALL_RAW_read_stats.tsv'),
-        
 
-        expand("reads/raw__barcode_rescue/{sample}_R1.fastq.gz", sample=SAMPLES),
+        # expand("reads/raw__barcode_rescue/{sample}_R1.fastq.gz", sample=SAMPLES),
+        expand('qc/read_stats/collections/ALL_RAW_read_stats.tsv'),
 
         expand("qc/fastqc/{qc_filter}/{sample}_R{read}_fastqc.html",
                qc_filter='raw', sample=SAMPLES, read = ['1', '2']),
-        expand("kraken2/{confidence}/{qc_filter}/{sample}.bracken",
-                qc_filter=QC_FILTER, sample=SAMPLES, confidence = '0.5'
-            ),
+        # expand("kraken2/{confidence}/{qc_filter}/{sample}.bracken",
+        #         qc_filter=QC_FILTER, sample=SAMPLES, confidence = '0.5'
+        #     ),
+
+    #     Rscript ~/MGX/viral-snake/scripts/plot_heatmap.R \                                                                              --abundance-table feature_tables/bracken-species/abundance_table.tsv \
+    # --taxonomy-table feature_tables/bracken-species/taxonomy_table.tsv \
+    # --output feature_tables/bracken-species/heatmap_virus.pdf \
+    # --prevalence 0.000000001 \
+    # --domain Virus \
+    # --detection 1
 
         # Map all samples to the co-assembly
-        expand(
-            "alignment/strobealign__default/co_assembly/megahit/ALL_SAMPLES_MERGED_RESCUED/contigs_formatted_minlen_700/__reads__/{query_qc}/{sample}/alignments.sorted.bam",
-            query_qc=QC_FILTER,
-            sample=SAMPLES
-        ),
+        # expand(
+        #     "alignment/strobealign__default/co_assembly/megahit/ALL_SAMPLES_MERGED_RESCUED/contigs_formatted_minlen_700/__reads__/{query_qc}/{sample}/alignments.sorted.bam",
+        #     query_qc=QC_FILTER,
+        #     sample=SAMPLES
+        # ),
         
         # Coverage stats for all samples
-        expand(
-            "alignment/strobealign__default/co_assembly/megahit/ALL_SAMPLES_MERGED_RESCUED/contigs_formatted_minlen_700/__reads__/{query_qc}/{sample}/coverage.tsv",
-            query_qc=QC_FILTER,
-            sample=SAMPLES
-        ),
-        expand("feature_tables/{feature_table_id}/taxonomy_table.tsv",
-            feature_table_id='bracken-species-all-rescued'),
+        # expand(
+        #     "alignment/strobealign__default/co_assembly/megahit/ALL_SAMPLES_MERGED_RESCUED/contigs_formatted_minlen_700/__reads__/{query_qc}/{sample}/coverage.tsv",
+        #     query_qc=QC_FILTER,
+        #     sample=SAMPLES
+        # ),
+        # expand("feature_tables/{feature_table_id}/taxonomy_table.tsv",
+        #     feature_table_id='bracken-species-all-rescued'),
         # 
+
+
         # expand("assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/contig_summary.tsv",
         #        assembler=ASSEMBLERS,
         #        qc_filter=QC_FILTER,
@@ -105,24 +113,28 @@ rule all:
         #        sample=SAMPLES),
         
         # Co-assemblies with DIAMOND annotation
-        # expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/diamond_ultra_sensitive/NR/hits_with_taxonomy.tsv",
-        #        assembler=ASSEMBLERS, 
-        #        collection=['ALL_SAMPLES_MERGED_RESCUED'], 
-        #        min_len=MIN_CONTIG_LENGTH),
+        expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/hits_with_taxonomy.tsv",
+               assembler=ASSEMBLERS, 
+               collection=['ALL_SAMPLES_MERGED'], 
+               min_len=MIN_CONTIG_LENGTH),
+
+
+
+        expand("feature_tables/bracken-species/taxonomy_table.tsv")
 
         # expand("co_assembly/{assembler}/{collection}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/viral_strict/hits.tsv",
         #        assembler=ASSEMBLERS, 
         #        collection=['ALL_SAMPLES_MERGED_RESCUED'], 
         #        min_len=MIN_CONTIG_LENGTH),
         
-        expand(
-            "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/download_summary.txt",
-            prefix="co_assembly/megahit/ALL_SAMPLES_MERGED_RESCUED",
-            min_len=700,
-            preset="faster",
-            database="NR",
-            filter_preset="viral_strict"
-        )
+        # expand(
+        #     "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/{filter_preset}/refseq/download_summary.txt",
+        #     prefix="co_assembly/megahit/ALL_SAMPLES_MERGED_RESCUED",
+        #     min_len=700,
+        #     preset="faster",
+        #     database="NR",
+        #     filter_preset="viral_strict"
+        # )
        #  # Filtered DIAMOND results
        #  expand("assembly/{assembler}/raw/{sample}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/{filter_preset}/hits.tsv",
        #         assembler=ASSEMBLERS,

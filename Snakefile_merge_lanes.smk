@@ -207,7 +207,7 @@ if not SAMPLES:
 
 rule all:
     input:
-        expand(os.path.join(MERGED_DIR, "F350035952_{sample}_{read}.fq.gz"), 
+        expand(os.path.join(MERGED_DIR, f"{RUN_NAME}_{{sample}}_{{read}}.fq.gz"), 
                sample=SAMPLES, read=[1, 2])
 
 def get_lane_inputs(wildcards):
@@ -221,6 +221,6 @@ rule merge_lanes:
     input:
         get_lane_inputs
     output:
-        os.path.join(MERGED_DIR, "F350035952_{sample}_{read}.fq.gz")
+        os.path.join(MERGED_DIR, f"{RUN_NAME}_{{sample}}_{{read}}.fq.gz")
     shell:
         "cat {input} > {output}"

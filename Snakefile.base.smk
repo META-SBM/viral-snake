@@ -36,9 +36,9 @@ DEFAULT_THREADS = {
 # Merge user config with defaults (user config overrides)
 THREADS = {**DEFAULT_THREADS, **config.get('threads', {})}
 
-# Set working directory
-WORKDIR = config.get("workdir")
-workdir: WORKDIR
+# # Set working directory
+# WORKDIR = config.get("workdir")
+# workdir: WORKDIR
 
 # ============================================================================
 # Include All Modules
@@ -53,7 +53,6 @@ include: "modules/qc/subsample.smk"
 
 # Assembly
 include: "modules/assembly/megahit.smk"
-include: "modules/assembly/metaspades.smk"
 include: "modules/assembly/qc.smk"
 include: "modules/assembly/anvio.smk"
 
@@ -73,3 +72,5 @@ include: "modules/minimap2/minimap2.smk"
 include: "modules/mmseqs2/cluster.smk"
 
 include: "modules/dwn_refs_from_refseq/dwn_refs.smk"
+
+include: "modules/strobealign/strobealign.smk"

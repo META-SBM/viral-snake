@@ -2,12 +2,20 @@ import yaml
 from pathlib import Path
 
 # Load DIAMOND presets
-MODULE_DIR = Path(workflow.basedir) / "modules/diamond"
-with open(MODULE_DIR / "diamond_presets.yaml") as f:
+DIAMOND_MODULE_DIR = Path(workflow.basedir) / "modules/diamond"
+with open(DIAMOND_MODULE_DIR / "diamond_presets.yaml") as f:
     DIAMOND_PRESETS = yaml.safe_load(f)['presets']
 
 def get_diamond_params(wildcards):
-    """Get all parameters for a DIAMOND preset"""
+    """
+    Get all parameters for a DIAMOND preset.
+    
+    Args:
+        wildcards: Must contain preset name
+        
+    Returns:
+        dict: All DIAMOND parameters from preset configuration
+    """
     preset = DIAMOND_PRESETS[wildcards.preset]
     return {
         'sensitivity_flag': preset['sensitivity_flag'],
@@ -19,21 +27,27 @@ def get_diamond_params(wildcards):
 
 
 rule diamond_blastx_unified:
-    """DIAMOND BLASTX for both individual assemblies and co-assemblies"""
+    """
+    DIAMOND BLASTX for both individual assemblies and co-assemblies.
+    Performs translated nucleotide to protein alignment against NR database.
+    Uses preset configurations for sensitivity/speed tradeoffs.
+    """
     input:
-        contigs = "{prefix}/contigs_formatted_minlen_{min_len}/contigs.fa"
+        contigs = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/contigs.fa"
     output:
-        hits = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/hits.txt"
+        hits = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/hits.txt"
     params:
         db = DATABASES['diamond_nr'],
         diamond_params = get_diamond_params
     threads: THREADS['diamond']
     wildcard_constraints:
-        preset = "|".join(DIAMOND_PRESETS.keys())  # Validate preset names
+        dataset = "[^/]+",
+        preset = "|".join(DIAMOND_PRESETS.keys()),
+        prefix = "(assembly|co_assembly)/.+"
     log:
-        "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/diamond.log"
+        "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/diamond.log"
     benchmark:
-        "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/diamond.benchmark.txt"
+        "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/diamond.benchmark.txt"
     conda:
         "../../envs/diamond.yaml"
     wildcard_constraints:
@@ -41,6 +55,7 @@ rule diamond_blastx_unified:
     shell:
         """
         echo "=== Running DIAMOND BLASTX ===" | tee {log}
+        echo "Dataset: {wildcards.dataset}" | tee -a {log}
         echo "Input contigs: {input.contigs}" | tee -a {log}
         echo "Database: {params.db}" | tee -a {log}
         echo "Output: {output.hits}" | tee -a {log}
@@ -69,12 +84,20 @@ rule diamond_blastx_unified:
         """
 
 rule add_taxonomy_to_diamond:
+    """
+    Add taxonomic lineage information to DIAMOND hits.
+    Uses taxonkit to resolve taxids to full taxonomic paths.
+    Handles multiple taxids per hit by using the first one.
+    """
     input:
-        diamond_hits = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/hits.txt"
+        diamond_hits = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/hits.txt"
     output:
-        diamond_taxonomy = "{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/hits_with_taxonomy.tsv"
+        diamond_taxonomy = "{fs_prefix}/{dataset}/{prefix}/contigs_formatted_minlen_{min_len}/diamond_{preset}/{database}/hits_with_taxonomy.tsv"
     params:
         taxdump = DATABASES['taxdump']
+    wildcard_constraints:
+        dataset = "[^/]+",
+        prefix = "(assembly|co_assembly)/.+"
     conda:
         "../../envs/taxonkit.yaml"
     wildcard_constraints:

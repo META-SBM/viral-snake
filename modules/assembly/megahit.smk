@@ -1,25 +1,32 @@
 rule megahit:
+    """
+    Assemble reads using MEGAHIT for individual samples.
+    Uses temporary directory to avoid cluttering output with intermediate files.
+    """
     input:
-        r1 = "reads/{qc_filter}/{sample}_R1.fastq.gz",
-        r2 = "reads/{qc_filter}/{sample}_R2.fastq.gz"
+        r1 = "{fs_prefix}/{dataset}/reads/{qc_filter}/{sample}_R1.fastq.gz",
+        r2 = "{fs_prefix}/{dataset}/reads/{qc_filter}/{sample}_R2.fastq.gz"
     output:
-        contigs = "assembly/megahit/{qc_filter}/{sample}/contigs.fa"
+        contigs = "{fs_prefix}/{dataset}/assembly/megahit/{qc_filter}/{sample}/contigs.fa"
     benchmark: 
-        "assembly/megahit/{qc_filter}/{sample}/benchmark.txt"
+        "{fs_prefix}/{dataset}/assembly/megahit/{qc_filter}/{sample}/benchmark.txt"
     params:
-        basedir = "assembly/megahit/{qc_filter}/{sample}",
-        tmpdir = "assembly/megahit/{qc_filter}/{sample}/tmp_megahit",
-        intermediate_contigs_dir = "assembly/megahit/{qc_filter}/{sample}/intermediate_contigs"
+        basedir = "{fs_prefix}/{dataset}/assembly/megahit/{qc_filter}/{sample}",
+        tmpdir = "{fs_prefix}/{dataset}/assembly/megahit/{qc_filter}/{sample}/tmp_megahit",
+        intermediate_contigs_dir = "{fs_prefix}/{dataset}/assembly/megahit/{qc_filter}/{sample}/intermediate_contigs"
     threads: THREADS['megahit']
+    wildcard_constraints:
+        dataset = "[^/]+",
+        sample = "[^/]+"
     log:
-        "assembly/megahit/{qc_filter}/{sample}/megahit.log"
+        "{fs_prefix}/{dataset}/assembly/megahit/{qc_filter}/{sample}/megahit.log"
     conda:
         "../../envs/assembly.yaml"
     shell:
         """
         # Create base directory and log
         mkdir -p {params.basedir}
-        echo "Assembling {wildcards.sample}" > {log}
+        echo "Assembling {wildcards.dataset}/{wildcards.sample}" > {log}
         
         # Clean up any old temp directory
         rm -rf {params.tmpdir}
@@ -43,42 +50,81 @@ rule megahit:
 
         # Clean up intermediate_contigs directory
         rm -rf {params.intermediate_contigs_dir}
-
         """
 
+
+def get_coassembly_input_files(wildcards):
+    """
+    Get input read files for co-assembly from collection metadata.
+    
+    Args:
+        wildcards: Must contain fs_prefix, dataset, and collection
+        
+    Returns:
+        dict: Keys 'r1' and 'r2' with lists of read file paths
+    """
+    import yaml
+    
+    # Load collection metadata
+    collection_file = f"{wildcards.fs_prefix}/{wildcards.dataset}/config/sample_collections/{wildcards.collection}.yaml"
+    
+    with open(collection_file) as f:
+        collection = yaml.safe_load(f)
+    
+    qc_filter = collection['qc_filter']
+    samples = collection['samples']
+    
+    # Build paths to read files
+    r1_files = expand(
+        "{fs_prefix}/{dataset}/reads/{qc_filter}/{sample}_R1.fastq.gz",
+        fs_prefix=wildcards.fs_prefix,
+        dataset=wildcards.dataset,
+        qc_filter=qc_filter,
+        sample=samples
+    )
+    
+    r2_files = expand(
+        "{fs_prefix}/{dataset}/reads/{qc_filter}/{sample}_R2.fastq.gz",
+        fs_prefix=wildcards.fs_prefix,
+        dataset=wildcards.dataset,
+        qc_filter=qc_filter,
+        sample=samples
+    )
+    
+    return {'r1': r1_files, 'r2': r2_files}
+
+
 rule megahit_coassembly:
-    """Co-assembly - MEGAHIT handles multiple files natively"""
+    """
+    Co-assembly using MEGAHIT - combines reads from multiple samples.
+    MEGAHIT handles multiple input files natively via comma-separated lists.
+    """
     input:
-        r1 = lambda wildcards: expand(
-            "reads/{qc_filter}/{sample}_R1.fastq.gz",
-            qc_filter=COLLECTIONS[wildcards.collection]['qc_filter'],
-            sample=COLLECTIONS[wildcards.collection]['samples']
-        ),
-        r2 = lambda wildcards: expand(
-            "reads/{qc_filter}/{sample}_R2.fastq.gz",
-            qc_filter=COLLECTIONS[wildcards.collection]['qc_filter'],
-            sample=COLLECTIONS[wildcards.collection]['samples']
-        )
+        unpack(get_coassembly_input_files)
     output:
-        contigs = "co_assembly/megahit/{collection}/contigs.fa"
-    benchmark: "co_assembly/megahit/{collection}/benchmark.txt"
+        contigs = "{fs_prefix}/{dataset}/co_assembly/megahit/{collection}/contigs.fa"
+    benchmark: 
+        "{fs_prefix}/{dataset}/co_assembly/megahit/{collection}/benchmark.txt"
     params:
-        basedir = "co_assembly/megahit/{collection}",
-        tmpdir = "co_assembly/megahit/{collection}/tmp_megahit",
+        basedir = "{fs_prefix}/{dataset}/co_assembly/megahit/{collection}",
+        tmpdir = "{fs_prefix}/{dataset}/co_assembly/megahit/{collection}/tmp_megahit",
         r1_list = lambda wildcards, input: ",".join(input.r1),
         r2_list = lambda wildcards, input: ",".join(input.r2)
     threads: 32
     wildcard_constraints:
-        collection = "[^/]+"  # Explicit constraint: no slashes in collection name
+        dataset = "[^/]+",
+        collection = "[^/]+"
     log:
-        "co_assembly/megahit/{collection}/megahit.log"
+        "{fs_prefix}/{dataset}/co_assembly/megahit/{collection}/megahit.log"
     conda:
         "../../envs/assembly.yaml"
     shell:
         """
         # Create base directory and log
-        echo "Co-assembling {wildcards.collection}" > {log}
-        echo "Samples: {input.r1}" >> {log}
+        mkdir -p {params.basedir}
+        echo "Co-assembling {wildcards.dataset}/{wildcards.collection}" > {log}
+        echo "R1 files: {input.r1}" >> {log}
+        echo "R2 files: {input.r2}" >> {log}
         
         # Clean up any old temp directory
         rm -rf {params.tmpdir}
