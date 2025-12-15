@@ -1,5 +1,25 @@
 # Cutadapt QC presets
 presets:
+  virome_udi:
+    adapter_r1: "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC"
+    adapter_r2: "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
+    quality: 10
+    min_length: 90
+    discard_trimmed: true
+    pair_filter: "any"
+    description: "ILLUMINA ADAPTERS"
+
+  virome_mgi:
+    adapter_r1: "AAGTCGGAGGCCAAGCGGTCTTAGGAAGACAA"
+    adapter_r2: "AAGTCGGATCGTAGCCATGTCGTTCTGTGAGCCAAGGAGT"
+    quality: 10
+    min_length: 90
+    discard_trimmed: true
+    pair_filter: "any"
+    description: "MGI VIROME ADAPTERS"
+
+
+
   mgi_virome4:
     adapter_r1: "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC"
     adapter_r2: "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"

@@ -74,3 +74,4 @@ include: "modules/mmseqs2/cluster.smk"
 include: "modules/dwn_refs_from_refseq/dwn_refs.smk"
 
 include: "modules/strobealign/strobealign.smk"
+include: "modules/mosdepth/plot_mosdepth.smk"

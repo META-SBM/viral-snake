@@ -13,17 +13,17 @@ from rich.columns import Columns
 # ============================================================================
 
 # Run identifier
-RUN_NAME = "V350375302"
+RUN_NAME = "V350375230"
 
 # Specify which lanes to merge (only these will be checked and merged)
 # Examples:
 #   ["L02", "L03"]           # Only lanes 2 and 3
 #   ["L01", "L02"]           # Only lanes 1 and 2
 #   ["L01", "L02", "L03", "L04"]  # All four lanes
-LANES_TO_MERGE = ["L02", "L03"]
+LANES_TO_MERGE = ["L01", "L02", "L03", "L04"]
 
 # Base paths
-BASE_DIR = f"/mnt/mgx/DATASETS/INTERNAL/VIROME/VIROME6/{RUN_NAME}"
+BASE_DIR = f"/mnt/mgx/DATASETS/INTERNAL/VIROME/VIROME8/{RUN_NAME}"
 MERGED_DIR = os.path.join(BASE_DIR, "MERGED_LANES")
 
 # Optional: Path to sample sheet (set to None to auto-detect from files)
