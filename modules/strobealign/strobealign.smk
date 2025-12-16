@@ -232,6 +232,65 @@ rule strobealign_align:
         """
 
 
+
+rule mosdepth_coverage:
+    """
+    Calculate coverage using mosdepth with configurable window size.
+    Produces windowed coverage in BED format alongside BAM files.
+    """
+    input:
+        bam = "{fs_prefix}/{dataset}/alignment/strobealign__default/{reference_path}/__reads__/{query_qc}/{sample}/alignments.sorted.bam",
+        bai = "{fs_prefix}/{dataset}/alignment/strobealign__default/{reference_path}/__reads__/{query_qc}/{sample}/alignments.sorted.bam.bai"
+    output:
+        regions = "{fs_prefix}/{dataset}/alignment/strobealign__default/{reference_path}/__reads__/{query_qc}/{sample}/depth.mosdepth__window_{window_size}.regions.bed.gz",
+        global_dist = "{fs_prefix}/{dataset}/alignment/strobealign__default/{reference_path}/__reads__/{query_qc}/{sample}/depth.mosdepth__window_{window_size}.mosdepth.global.dist.txt",
+        summary = "{fs_prefix}/{dataset}/alignment/strobealign__default/{reference_path}/__reads__/{query_qc}/{sample}/depth.mosdepth__window_{window_size}.mosdepth.summary.txt"
+    params:
+        prefix = "{fs_prefix}/{dataset}/alignment/strobealign__default/{reference_path}/__reads__/{query_qc}/{sample}/depth.mosdepth__window_{window_size}",
+        window = lambda wildcards: wildcards.window_size
+    threads: THREADS.get('mosdepth', 4)
+    wildcard_constraints:
+        dataset = "[^/]+",
+        reference_path = ".+",
+        query_qc = "[^/]+",
+        sample = "[^/]+",
+        window_size = "\d+"
+    log:
+        "{fs_prefix}/{dataset}/alignment/strobealign__default/{reference_path}/__reads__/{query_qc}/{sample}/depth.mosdepth__window_{window_size}.log"
+    benchmark:
+        "{fs_prefix}/{dataset}/alignment/strobealign__default/{reference_path}/__reads__/{query_qc}/{sample}/depth.mosdepth__window_{window_size}.benchmark.txt"
+    conda:
+        "env.yaml"
+    shell:
+        """
+        echo "=== Mosdepth coverage calculation ===" > {log}
+        echo "Dataset: {wildcards.dataset}" >> {log}
+        echo "Sample: {wildcards.sample}" >> {log}
+        echo "Reference path: {wildcards.reference_path}" >> {log}
+        echo "Query QC: {wildcards.query_qc}" >> {log}
+        echo "Window size: {params.window} bp" >> {log}
+        echo "Threads: {threads}" >> {log}
+        echo "BAM: {input.bam}" >> {log}
+        echo "" >> {log}
+        
+        # Run mosdepth
+        mosdepth \
+            --no-per-base \
+            --by {params.window} \
+            -t {threads} \
+            {params.prefix} \
+            {input.bam} \
+            2>> {log}
+        
+        echo "" >> {log}
+        echo "=== Coverage calculation complete ===" >> {log}
+        
+        # Print summary stats
+        echo "" >> {log}
+        echo "=== Summary statistics ===" >> {log}
+        cat {output.summary} >> {log}
+        """
+
 rule strobealign_coverage:
     """
     Calculate per-contig coverage statistics from BAM file.
