@@ -28,13 +28,13 @@ DATASETS = {
         'assemblers': ['megahit'],
         'samples': []
     },
-    'VIROME5': {
-        'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
-        'qc_filter': 'raw__cutadapt_virome_udi',
-        'min_contig_length': 700,
-        'assemblers': ['megahit'],
-        'samples': []
-    },
+    # 'VIROME5': {
+    #     'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
+    #     'qc_filter': 'raw__cutadapt_virome_udi',
+    #     'min_contig_length': 700,
+    #     'assemblers': ['megahit'],
+    #     'samples': []
+    # },
     'VIROME6': {
         'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
         'qc_filter': 'raw__cutadapt_mgi_virome',
@@ -45,6 +45,13 @@ DATASETS = {
     'VIROME7': {
         'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
         'qc_filter': 'raw__cutadapt_mgi_virome4',
+        'min_contig_length': 700,
+        'assemblers': ['megahit'],
+        'samples': []  # Populated by discovery
+    },
+    'VIROME8': {
+        'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
+        'qc_filter': 'raw__cutadapt_virome_udi',
         'min_contig_length': 700,
         'assemblers': ['megahit'],
         'samples': []  # Populated by discovery
@@ -139,9 +146,9 @@ for dataset in DATASETS:
         )
 
         # Assembly: Formatted contigs
-        # target_list.append(
-        #     f"{fs_prefix}/{dataset}/assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/contigs.fa"
-        # )
+        target_list.append(
+            f"{fs_prefix}/{dataset}/assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/contigs.fa"
+        )
         
         # # Alignment: Map sample back to its own assembly
         # target_list.append(
@@ -204,7 +211,7 @@ res = expand('/mnt/mgx/DATASETS/INTERNAL/VIROME/{dataset}/qc/read_stats/collecti
 res = expand('/mnt/mgx/DATASETS/INTERNAL/VIROME/VIROME6/qc/read_stats/collections/{collections}_read_stats.tsv', collections=['ALL_RAW', 'ALL_TRIMMED_DISCARD'])
 res = expand('/mnt/mgx/DATASETS/INTERNAL/VIROME/{dataset}/co_assembly/megahit/ALL_SAMPLES_MERGED/contigs_formatted_minlen_700/diamond_faster/NR/LCA.tsv', dataset=DATASETS.keys())
 
-# res = expand("/mnt/mgx/DATASETS/INTERNAL/VIROME/VIROME7/feature_tables/bracken-species-all/heatmap_{heatmap_preset}.pdf", heatmap_preset=['viral_all', 'all_taxa_0.1'])
+# res = expand("/mnt/mgx/DATASETS/INTERNAL/VIROME/VIROME8/feature_tables/bracken-species-all/heatmap_{heatmap_preset}.pdf", heatmap_preset=['viral_all', 'all_taxa_0.1'])
 
 # res = expand("/mnt/mgx/DATASETS/INTERNAL/VIROME/VIROME6/co_assembly/megahit/{collection}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/hits_with_taxonomy.tsv",
 #                collection=['ALL_SAMPLES_MERGED'], 
@@ -216,7 +223,8 @@ res = expand('/mnt/mgx/DATASETS/INTERNAL/VIROME/{dataset}/co_assembly/megahit/AL
 # Main rule
 rule all:
     input:
-        target_list
+        # target_list
+        res
 
 
 
