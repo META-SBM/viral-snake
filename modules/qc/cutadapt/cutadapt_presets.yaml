@@ -18,7 +18,7 @@ presets:
     pair_filter: "any"
     description: "ILLUMINA ADAPTERS"
 
-  virome_mgi:
+  virome_mdi:
     adapter_r1: "AAGTCGGAGGCCAAGCGGTCTTAGGAAGACAA"
     adapter_r2: "AAGTCGGATCGTAGCCATGTCGTTCTGTGAGCCAAGGAGT"
     quality: 10

@@ -4,6 +4,9 @@ import os
 import glob
 from pathlib import Path
 import pandas as pd
+from rich.console import Console
+
+console = Console()
 
 
 # ============================================================================
@@ -14,36 +17,42 @@ def get_samples(reads_dir, r1_pattern="_R1.fastq.gz", r2_pattern="_R2.fastq.gz")
     """
     Extract sample names from paired-end read files.
     
+    Excludes samples with missing R2 files and reports them as warnings.
+    
     Args:
         reads_dir: Directory containing read files
         r1_pattern: Pattern to identify R1 files
         r2_pattern: Pattern to identify R2 files (for validation)
     
     Returns:
-        list: Sorted sample names
-        
-    Raises:
-        FileNotFoundError: If R1/R2 pairs don't match
+        list: Sorted sample names (only valid paired samples)
     """
     reads_path = Path(reads_dir)
     
     # Get R1 files
     r1_files = sorted(reads_path.glob(f"*{r1_pattern}"))
-    samples = [f.name.replace(r1_pattern, "") for f in r1_files]
+    all_samples = [f.name.replace(r1_pattern, "") for f in r1_files]
     
-    # Validate R2 files exist
+    # Validate R2 files exist and separate valid/invalid samples
+    valid_samples = []
     missing_r2 = []
-    for sample in samples:
+    
+    for sample in all_samples:
         r2_file = reads_path / f"{sample}{r2_pattern}"
-        if not r2_file.exists():
-            missing_r2.append(str(r2_file))
+        if r2_file.exists():
+            valid_samples.append(sample)
+        else:
+            missing_r2.append((sample, str(r2_file)))
     
+    # Report missing R2 files if any
     if missing_r2:
-        raise FileNotFoundError(
-            f"Missing R2 files for paired samples:\n" + "\n".join(missing_r2)
-        )
+        console.print(f"\n[bold yellow]⚠ Warning:[/bold yellow] Found {len(missing_r2)} sample(s) with missing R2 files")
+        console.print("[yellow]These samples will be excluded from the analysis:[/yellow]")
+        for sample, r2_path in missing_r2:
+            console.print(f"  • {sample}: {r2_path}")
+        console.print(f"\n[bold green]✓[/bold green] Continuing with {len(valid_samples)} valid paired samples\n")
     
-    return samples
+    return valid_samples
 
 
 def get_samples_from_manifest(manifest_file, sample_col="sample_id"):

@@ -64,24 +64,36 @@ def rename_lane_columns(df, verbose=True):
         
         # Find columns matching this field
         field_columns = []
-        
+
+        # Special handling for Barcode field: check if "Barcode" column exists
+        has_barcode_column = False
+        if base_field == 'Barcode':
+            has_barcode_column = 'Barcode' in [c.strip() for c in df.columns]
+
         for col in df.columns:
             col_stripped = col.strip()
             
             # Check if this column matches any of our search names
             for search_name in search_names:
-                # Exact match (Lane 1)
+                # Exact match handling
                 if col_stripped == search_name:
-                    field_columns.append((col, 1, 'exact'))
+                    # Special case: if we have "Barcode" column, then "BX" becomes L02
+                    if base_field == 'Barcode' and search_name == 'BX' and has_barcode_column:
+                        field_columns.append((col, 2, 'exact_shifted'))
+                    else:
+                        field_columns.append((col, 1, 'exact'))
                     break
                 
-                # Pattern: name.N (Lane N+1)
-                # e.g., "ID.1" -> Lane 2, "ID.2" -> Lane 3
+                # Pattern: name.N
                 pattern = rf'^{re.escape(search_name)}\.(\d+)\s*$'
                 match = re.match(pattern, col_stripped)
                 if match:
                     suffix_num = int(match.group(1))
-                    lane_num = suffix_num + 1
+                    # If BX and Barcode exists, shift BX.N lanes by 1
+                    if base_field == 'Barcode' and search_name in ['BX', 'bx'] and has_barcode_column:
+                        lane_num = suffix_num + 2  # BX.1 → L03, BX.2 → L04
+                    else:
+                        lane_num = suffix_num + 1  # Normal: BX.1 → L02
                     field_columns.append((col, lane_num, f'.{suffix_num}'))
                     break
         

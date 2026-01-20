@@ -14,20 +14,34 @@ include: "Snakefile.base.smk"
 # ============================================================================
 
 DATASETS = {
-    'RUN3': {
+    # 'VIROME1': {
+    #     'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
+    #     'qc_filter': 'raw__cutadapt_virome_mdi',
+    #     'min_contig_length': 700,
+    #     'assemblers': ['megahit'],
+    #     'samples': []
+    # },
+    'VIROME2': {
         'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
-        'qc_filter': 'raw__cutadapt_mgi_virome',
-        'min_contig_length': 700,
-        'assemblers': ['megahit'],
-        'samples': []  # Populated by discovery
-    },
-    'VIROME4': {
-        'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
-        'qc_filter': 'raw__cutadapt_mgi_virome4',
+        'qc_filter': 'raw__cutadapt_virome_mdi',
         'min_contig_length': 700,
         'assemblers': ['megahit'],
         'samples': []
     },
+    # 'VIROME3': {
+    #     'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
+    #     'qc_filter': 'raw__cutadapt_mgi_virome',
+    #     'min_contig_length': 700,
+    #     'assemblers': ['megahit'],
+    #     'samples': []  # Populated by discovery
+    # },
+    # 'VIROME4': {
+    #     'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
+    #     'qc_filter': 'raw__cutadapt_mgi_virome4',
+    #     'min_contig_length': 700,
+    #     'assemblers': ['megahit'],
+    #     'samples': []
+    # },
     # 'VIROME5': {
     #     'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
     #     'qc_filter': 'raw__cutadapt_virome_udi',
@@ -35,28 +49,45 @@ DATASETS = {
     #     'assemblers': ['megahit'],
     #     'samples': []
     # },
-    'VIROME6': {
-        'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
-        'qc_filter': 'raw__cutadapt_mgi_virome',
-        'min_contig_length': 700,
-        'assemblers': ['megahit'],
-        'samples': []  # Populated by discovery
-    },
-    'VIROME7': {
-        'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
-        'qc_filter': 'raw__cutadapt_mgi_virome4',
-        'min_contig_length': 700,
-        'assemblers': ['megahit'],
-        'samples': []  # Populated by discovery
-    },
-    'VIROME8': {
-        'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
-        'qc_filter': 'raw__cutadapt_virome_udi',
-        'min_contig_length': 700,
-        'assemblers': ['megahit'],
-        'samples': []  # Populated by discovery
-    },
+    # 'VIROME6': {
+    #     'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
+    #     'qc_filter': 'raw__cutadapt_virome_mdi',
+    #     'min_contig_length': 700,
+    #     'assemblers': ['megahit'],
+    #     'samples': []  # Populated by discovery
+    # },
+    # 'VIROME7': {
+    #     'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
+    #     'qc_filter': 'raw__cutadapt_mgi_virome4',
+    #     'min_contig_length': 700,
+    #     'assemblers': ['megahit'],
+    #     'samples': []  # Populated by discovery
+    # },
+    # 'VIROME8': {
+    #     'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
+    #     'qc_filter': 'raw__cutadapt_virome_udi',
+    #     'min_contig_length': 700,
+    #     'assemblers': ['megahit'],
+    #     'samples': []  # Populated by discovery
+    # },
+    # 'VIROME9': {
+    #     'fs_prefix': '/mnt/mgx/DATASETS/INTERNAL/VIROME',
+    #     'qc_filter': 'raw__cutadapt_virome_udi',
+    #     'min_contig_length': 700,
+    #     'assemblers': ['megahit'],
+    #     'samples': []  # Populated by discovery
+    # },
 }
+
+# DATASETS = {
+#     'PRJNA841744': {
+#         'fs_prefix': '/mnt/mgx/DATASETS/EXTERNAL',
+#         'qc_filter': 'raw',
+#         'min_contig_length': 700,
+#         'assemblers': ['megahit'],
+#         'samples': []  # Populated by discovery
+#     },
+# }
 
 # ============================================================================
 # Sample Discovery
@@ -132,23 +163,27 @@ for dataset in DATASETS:
         # Reference path: this sample's own assembly
         reference_path = f"assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}"
         
-        # # Kraken2 
-        # target_list.append(
-        #     f"{fs_prefix}/{dataset}/kraken2/0.5/{qc_filter}/{sample}.bracken"
-        # )
+        # Kraken2 
+        target_list.append(
+            f"{fs_prefix}/{dataset}/kraken2/0.5/{qc_filter}/{sample}.bracken"
+        )
+
+        target_list.append(
+            f"{fs_prefix}/{dataset}/reads/{qc_filter}/{sample}_R1.fastq.gz"
+        )
 
         # # QC: Raw read counts
-        target_list.append(
-            f"{fs_prefix}/{dataset}/qc/read_stats/raw/{sample}_read_counts.tsv"
-        )
-        target_list.append(
-            f"{fs_prefix}/{dataset}/qc/read_stats/{qc_filter}/{sample}_read_counts.tsv"
-        )
+        # target_list.append(
+        #     f"{fs_prefix}/{dataset}/qc/read_stats/raw/{sample}_read_counts.tsv"
+        # )
+        # target_list.append(
+        #     f"{fs_prefix}/{dataset}/qc/read_stats/{qc_filter}/{sample}_read_counts.tsv"
+        # )
 
         # Assembly: Formatted contigs
-        target_list.append(
-            f"{fs_prefix}/{dataset}/assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/contigs.fa"
-        )
+        # target_list.append(
+        #     f"{fs_prefix}/{dataset}/assembly/{assembler}/{qc_filter}/{sample}/contigs_formatted_minlen_{min_len}/contigs.fa"
+        # )
         
         # # Alignment: Map sample back to its own assembly
         # target_list.append(
@@ -167,37 +202,37 @@ minimap2_targets = []
 
 reference_path = f"references/refseq/references.clean"
 
-dataset = 'RUN3'
-fs_prefix = DATASETS[dataset]['fs_prefix']
-qc_filter = DATASETS[dataset]['qc_filter']
-samples = DATASETS[dataset]['samples']
-min_len = DATASETS[dataset]['min_contig_length']
-assembler = DATASETS[dataset]['assemblers'][0]
-for s in samples:
-    query_path = f'assembly/megahit/{qc_filter}/{s}/contigs_formatted_minlen_700'
-    # query_path = f'assembly/megahit/{qc_filter}/{s}'
-    target = f"{fs_prefix}/{dataset}/alignment/minimap2_asm10/{reference_path}/__contigs__/{query_path}/alignments.paf"
-    minimap2_targets.append(target)
+# dataset = 'RUN3'
+# fs_prefix = DATASETS[dataset]['fs_prefix']
+# qc_filter = DATASETS[dataset]['qc_filter']
+# samples = DATASETS[dataset]['samples']
+# min_len = DATASETS[dataset]['min_contig_length']
+# assembler = DATASETS[dataset]['assemblers'][0]
+# for s in samples:
+#     query_path = f'assembly/megahit/{qc_filter}/{s}/contigs_formatted_minlen_700'
+#     # query_path = f'assembly/megahit/{qc_filter}/{s}'
+#     target = f"{fs_prefix}/{dataset}/alignment/minimap2_asm10/{reference_path}/__contigs__/{query_path}/alignments.paf"
+#     minimap2_targets.append(target)
 
-    target = f"{fs_prefix}/{dataset}/alignment/minimap2_asm10/{reference_path}/__contigs__/{query_path}/reference_coverage.tsv"
-    minimap2_targets.append(target)
+#     target = f"{fs_prefix}/{dataset}/alignment/minimap2_asm10/{reference_path}/__contigs__/{query_path}/reference_coverage.tsv"
+#     minimap2_targets.append(target)
 
 
-reference_path = f"references/refseq/references.clean"
-dataset = 'VIROME4'
-fs_prefix = DATASETS[dataset]['fs_prefix']
-qc_filter = DATASETS[dataset]['qc_filter']
-samples = DATASETS[dataset]['samples']
-min_len = DATASETS[dataset]['min_contig_length']
-assembler = DATASETS[dataset]['assemblers'][0]
-for s in samples:
-    query_path = f'assembly/megahit/{qc_filter}/{s}/contigs_formatted_minlen_700'
-    # query_path = f'assembly/megahit/{qc_filter}/{s}'
-    target = f"{fs_prefix}/{dataset}/alignment/minimap2_asm10/{reference_path}/__contigs__/{query_path}/alignments.paf"
-    minimap2_targets.append(target)
+# reference_path = f"references/refseq/references.clean"
+# dataset = 'VIROME4'
+# fs_prefix = DATASETS[dataset]['fs_prefix']
+# qc_filter = DATASETS[dataset]['qc_filter']
+# samples = DATASETS[dataset]['samples']
+# min_len = DATASETS[dataset]['min_contig_length']
+# assembler = DATASETS[dataset]['assemblers'][0]
+# for s in samples:
+#     query_path = f'assembly/megahit/{qc_filter}/{s}/contigs_formatted_minlen_700'
+#     # query_path = f'assembly/megahit/{qc_filter}/{s}'
+#     target = f"{fs_prefix}/{dataset}/alignment/minimap2_asm10/{reference_path}/__contigs__/{query_path}/alignments.paf"
+#     minimap2_targets.append(target)
 
-    target = f"{fs_prefix}/{dataset}/alignment/minimap2_asm10/{reference_path}/__contigs__/{query_path}/reference_coverage.tsv"
-    minimap2_targets.append(target)
+#     target = f"{fs_prefix}/{dataset}/alignment/minimap2_asm10/{reference_path}/__contigs__/{query_path}/reference_coverage.tsv"
+#     minimap2_targets.append(target)
 
 # target_list.append(
 #     f"/mnt/mgx/DATASETS/INTERNAL/VIROME/RUN3/feature_tables/bracken-species-all/taxonomy_table.tsv"
@@ -211,7 +246,12 @@ res = expand('/mnt/mgx/DATASETS/INTERNAL/VIROME/{dataset}/qc/read_stats/collecti
 res = expand('/mnt/mgx/DATASETS/INTERNAL/VIROME/VIROME6/qc/read_stats/collections/{collections}_read_stats.tsv', collections=['ALL_RAW', 'ALL_TRIMMED_DISCARD'])
 res = expand('/mnt/mgx/DATASETS/INTERNAL/VIROME/{dataset}/co_assembly/megahit/ALL_SAMPLES_MERGED/contigs_formatted_minlen_700/diamond_faster/NR/LCA.tsv', dataset=DATASETS.keys())
 
-# res = expand("/mnt/mgx/DATASETS/INTERNAL/VIROME/VIROME8/feature_tables/bracken-species-all/heatmap_{heatmap_preset}.pdf", heatmap_preset=['viral_all', 'all_taxa_0.1'])
+res = expand(
+    "{fs_prefix}/{dataset}/feature_tables/bracken-species-all/heatmap_{heatmap_preset}.pdf",
+    fs_prefix='/mnt/mgx/DATASETS/INTERNAL/VIROME',
+    dataset=list(DATASETS.keys()),
+    heatmap_preset=['viral_all', 'all_taxa_0.1']
+)
 
 # res = expand("/mnt/mgx/DATASETS/INTERNAL/VIROME/VIROME6/co_assembly/megahit/{collection}/contigs_formatted_minlen_{min_len}/diamond_faster/NR/hits_with_taxonomy.tsv",
 #                collection=['ALL_SAMPLES_MERGED'], 
